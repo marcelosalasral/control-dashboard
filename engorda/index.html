@@ -297,7 +297,7 @@ fetch('../Rengo.csv')
             })
             .filter(r => !isNaN(r.pesoVivo)); // solo filas con peso vivo
 
-        poblarFiltros(datosOriginales);
+        poblarFiltrosDinamicos(datosOriginales);
         aplicarFiltrosYActualizar();
     })
     .catch(err => {
@@ -325,14 +325,45 @@ function poblarSelect(select, valores) {
     });
 }
 
-function poblarFiltros(rows) {
-    poblarSelect(selAnio, rows.map(r => r.anio));
-    poblarSelect(selMes, rows.map(r => r.mes));
-    poblarSelect(selSemana, rows.map(r => r.semana));
-    poblarSelect(selDiaLote, rows.map(r => r.diaLote));
-    poblarSelect(selSector, rows.map(r => r.sector));
-    poblarSelect(selPabellon, rows.map(r => r.pabellon));
+function repoblarSelect(select, valores, textoTodos) {
+    const valorAnterior = select.value;
+
+    // limpiar opciones
+    select.innerHTML = '';
+
+    // opción "Todos"
+    const optAll = document.createElement('option');
+    optAll.value = 'all';
+    optAll.textContent = textoTodos;
+    select.appendChild(optAll);
+
+    // valores únicos ordenados
+    const unicos = Array.from(new Set(valores.filter(v => v && v !== ''))).sort();
+    unicos.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+    });
+
+    // si el valor anterior sigue existiendo → lo dejamos
+    const existe = unicos.includes(valorAnterior);
+    if (existe) {
+        select.value = valorAnterior;
+    } else {
+        select.value = 'all';
+    }
 }
+
+function poblarFiltrosDinamicos(rows) {
+    repoblarSelect(selAnio,    rows.map(r => r.anio),    'Todos');
+    repoblarSelect(selMes,     rows.map(r => r.mes),     'Todos');
+    repoblarSelect(selSemana,  rows.map(r => r.semana),  'Todas');
+    repoblarSelect(selDiaLote, rows.map(r => r.diaLote), 'Todos');
+    repoblarSelect(selSector,  rows.map(r => r.sector),  'Todos');
+    repoblarSelect(selPabellon,rows.map(r => r.pabellon),'Todos');
+}
+
 
 function filtrar(rows) {
     return rows.filter(r =>
@@ -362,6 +393,11 @@ btnClear.onclick = () => {
 
 function aplicarFiltrosYActualizar() {
     const filtrados = filtrar(datosOriginales);
+
+    // 1) repoblar filtros según los datos que quedan
+    poblarFiltrosDinamicos(filtrados);
+
+    // 2) actualizar KPIs y gráficos
     actualizarKPIs(filtrados);
     actualizarCategoria(filtrados);
 }
