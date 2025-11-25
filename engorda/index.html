@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Engorda – Rengo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .kpi {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .kpi-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .kpi-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .chart-box {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-top: 20px;
+        }
+        a {
+            text-decoration: none;
+        }
+        button {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+        .error {
+            color: #b00020;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="top-bar">
+        <div>
+            <h1>🐷 Dashboard Engorda – Rengo</h1>
+            <p>Datos reales desde <strong>Rengo.csv</strong> (Peso Vivo, Edad, Eficiencia).</p>
+        </div>
+        <div>
+            <a href="../index.html">
+                <button>⬅ Volver al panel principal</button>
+            </a>
+        </div>
+    </div>
+
+    <!-- KPIs superiores -->
+    <div class="kpi-grid">
+        <div class="kpi">
+            <div class="kpi-label">Peso vivo promedio (kg)</div>
+            <div class="kpi-value" id="kpi-peso">-</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Edad promedio (días)</div>
+            <div class="kpi-value" id="kpi-edad">-</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Eficiencia promedio</div>
+            <div class="kpi-value" id="kpi-eficiencia">-</div>
+        </div>
+    </div>
+
+    <!-- Gráfico por semana -->
+    <div class="chart-box">
+        <h3>Peso vivo promedio por semana</h3>
+        <canvas id="pesoSemanaChart"></canvas>
+        <div id="error-msg" class="error"></div>
+    </div>
+
+</div>
+
+<script>
+// Lee Rengo.csv desde la raíz del repositorio
+fetch('../Rengo.csv')
+    .then(response => response.text())
+    .then(csvText => {
+
+        // Separar líneas
+        const filas = csvText.trim().split(/\r?\n/);
+
+        if (filas.length <= 1) {
+            document.getElementById('error-msg').textContent = 'El archivo Rengo.csv no tiene datos.';
+            return;
+        }
+
+        // Detectar separador (coma o punto y coma)
+        const separador = filas[0].includes(';') ? ';' : ',';
+
+        // Encabezados
+        const encabezados = filas[0].split(separador).map(h => h.trim());
+
+        // Función auxiliar para obtener valor por nombre de columna
+        function getValor(filaValores, nombreColumna) {
+            const idx = encabezados.indexOf(nombreColumna);
+            if (idx === -1) return '';
+            return (filaValores[idx] || '').trim();
+        }
+
+        // Convertir filas a objetos con solo las columnas que nos interesan
+        const datos = filas.slice(1)
+            .filter(l => l.trim().length > 0)
+            .map(linea => {
+                const valores = linea.split(separador);
+                const pesoVivoStr = getValor(valores, 'Peso Vivo') || getValor(valores, ' Peso Vivo ');
+                const edadStr = getValor(valores, 'Edad');
+                const eficienciaStr = getValor(valores, 'Eficiencia');
+                const semanaStr = getValor(valores, 'Semana');
+
+                // Reemplazar coma decimal por punto si viene así
+                const pesoVivo = parseFloat((pesoVivoStr || '').replace(',', '.'));
+                const edad = parseFloat((edadStr || '').replace(',', '.'));
+                const eficiencia = parseFloat((eficienciaStr || '').replace(',', '.'));
+
+                return {
+                    pesoVivo,
+                    edad,
+                    eficiencia,
+                    semana: semanaStr || 'Sin semana'
+                };
+            });
+
+        // Filtrar filas válidas (que tengan peso vivo numérico)
+        const datosValidos = datos.filter(d => !isNaN(d.pesoVivo));
+
+        if (datosValidos.length === 0) {
+            document.getElementById('kpi-peso').textContent = 'Sin datos';
+            document.getElementById('kpi-edad').textContent = 'Sin datos';
+            document.getElementById('kpi-eficiencia').textContent = 'Sin datos';
+            document.getElementById('error-msg').textContent = 'No se encontraron filas con Peso Vivo numérico.';
+            return;
+        }
+
+        // Función promedio
+        const promedio = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+        // KPIs
+        const pesoProm = promedio(datosValidos.map(d => d.pesoVivo));
+        const edadProm = promedio(datosValidos.map(d => isNaN(d.edad) ? 0 : d.edad));
+        const eficienciaProm = promedio(datosValidos.map(d => isNaN(d.eficiencia) ? 0 : d.eficiencia));
+
+        document.getElementById('kpi-peso').textContent = pesoProm.toFixed(1) + ' kg';
+        document.getElementById('kpi-edad').textContent = isNaN(edadProm) ? 'N/D' : edadProm.toFixed(0) + ' días';
+        document.getElementById('kpi-eficiencia').textContent = isNaN(eficienciaProm) ? 'N/D' : eficienciaProm.toFixed(2);
+
+        // Agrupar por semana para el gráfico
+        const porSemana = {};
+        datosValidos.forEach(d => {
+            const key = d.semana || 'Sin semana';
+            if (!porSemana[key]) porSemana[key] = [];
+            porSemana[key].push(d.pesoVivo);
+        });
+
+        const etiquetas = Object.keys(porSemana);
+        // Ordenar semanas si son numéricas
+        etiquetas.sort((a, b) => {
+            const na = parseInt(a); const nb = parseInt(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
+
+        const datosGrafico = etiquetas.map(sem => {
+            const lista = porSemana[sem];
+            return promedio(lista);
+        });
+
+        const ctx = document.getElementById('pesoSemanaChart');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: etiquetas,
+                datasets: [{
+                    label: 'Peso vivo promedio (kg)',
+                    data: datosGrafico
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+    })
+    .catch(err => {
+        console.error('Error leyendo Rengo.csv:', err);
+        document.getElementById('error-msg').textContent = 'Error al leer Rengo.csv (revisa que exista en la raíz del repositorio).';
+    });
+</script>
+
+</body>
+</html>
+
