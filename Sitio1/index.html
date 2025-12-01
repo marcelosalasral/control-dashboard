@@ -58,6 +58,14 @@
     .back-link {
       font-size: 0.9rem;
     }
+
+    .kpi-clickable {
+      cursor: pointer;
+    }
+    .kpi-clickable:hover {
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+    
   </style>
 </head>
 <body>
@@ -133,23 +141,23 @@
       </div>
     </section>
 
-<!-- KPIs Ventanas biológicas -->
+ <!-- KPIs Ventanas biológicas -->
     <section class="mb-4">
       <div class="row g-3">
         <div class="col-md-4">
-          <div class="card kpi-card p-3">
+          <div id="card-gestacion-pasada" class="card kpi-card p-3 kpi-clickable">
             <div class="kpi-label">Gestación &gt; 114 días (Servidas)</div>
             <div id="kpi-gestacion-pasada" class="kpi-value">-</div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card kpi-card p-3">
+          <div id="card-lactancia-larga" class="card kpi-card p-3 kpi-clickable">
             <div class="kpi-label">Lactancia &gt; 23 días</div>
             <div id="kpi-lactancia-larga" class="kpi-value">-</div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card kpi-card p-3">
+          <div id="card-destete-fuera" class="card kpi-card p-3 kpi-clickable">
             <div class="kpi-label">Destetadas fuera de ventana</div>
             <div id="kpi-destete-fuera" class="kpi-value">-</div>
           </div>
@@ -198,6 +206,37 @@
       </div>
     </section>
 
+<!-- Detalle Ventanas Biológicas -->
+    <section class="mb-4">
+      <div class="card p-3 kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Detalle Ventanas Biológicas</h2>
+          <small id="label-detalle-ventanas" class="text-muted">
+            Mostrando: todas las categorías
+          </small>
+        </div>
+        <div class="table-responsive table-fixed">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Estado</th>
+                <th>Días</th>
+                <th>Partos</th>
+                <th>Ubicación</th>
+                <th>Genética</th>
+                <th>Grupo</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-ventanas">
+              <!-- Se rellena desde JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    
   </div>
 
   <script src="js/dashboard.js?v=2"></script>
