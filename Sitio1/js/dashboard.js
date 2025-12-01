@@ -11,6 +11,13 @@ const ESTADO_DESCRIPCION = {
   "H": "Celo no servido"
 };
 
+// Ventanas biológicas (puedes ajustar estos valores si cambian criterios)
+const MAX_GESTACION_DIAS = 114;    // S: días desde servicio
+const MAX_LACTANCIA_DIAS = 23;     // L: días de lactancia
+const MAX_W_LDC_DIAS     = 5;      // W en LDC
+const MAX_W_ML_1020_DIAS = 7;      // W en ML con genética 1020
+const MAX_W_OTROS_DIAS   = 5;      // W otros casos
+
 let estadoChart = null;
 let dataGlobal = [];   // aquí guardamos todo el CSV
 let filtros = {
@@ -152,7 +159,7 @@ function aplicarFiltrosYActualizar() {
   procesarDatosFiltrados(filtrada);
 }
 
-// Procesar datos filtrados y alimentar KPIs, gráfico y tabla
+// Procesar datos filtrados y alimentar KPIs, ventanas biológicas, gráfico y tabla
 function procesarDatosFiltrados(data) {
   if (!data || data.length === 0) {
     actualizarKPIs({
@@ -161,6 +168,7 @@ function procesarDatosFiltrados(data) {
       totalImproductivas: 0,
       listaRojaCount: 0
     });
+    actualizarVentanasBiologicas(0, 0, 0);
     renderizarGraficoEstados({});
     renderizarListaRoja([]);
     return;
@@ -190,6 +198,15 @@ function procesarDatosFiltrados(data) {
     listaRojaCount: listaRoja.length
   });
 
+  // Cálculo de ventanas biológicas
+  const {
+    gestacionPasada,
+    lactanciaLarga,
+    desteteFuera
+  } = calcularVentanasBiologicas(data);
+
+  actualizarVentanasBiologicas(gestacionPasada, lactanciaLarga, desteteFuera);
+
   renderizarGraficoEstados(conteoEstados);
   renderizarListaRoja(listaRoja);
 }
@@ -214,6 +231,58 @@ function actualizarKPIs({ total, totalProductivas, totalImproductivas, listaRoja
   kpiProductivas.textContent = `${pctProd}%`;
   kpiImproductivas.textContent = `${pctImprod}%`;
   kpiListaRoja.textContent = listaRojaCount;
+}
+
+// Calcula hembras fuera de ventana biológica
+function calcularVentanasBiologicas(data) {
+  let gestacionPasada = 0;
+  let lactanciaLarga = 0;
+  let desteteFuera = 0;
+
+  data.forEach(row => {
+    const estado = (row["Estado"] || "").toString().trim().toUpperCase();
+    const dias = Number(row["Dia Proceso"] || 0);
+    const ubic = (row["Ubicación"] || row["Ubicacion"] || "").toString().trim().toUpperCase();
+    const genetica = (row["Genética"] || row["Genetica"] || "").toString().trim().toUpperCase();
+
+    // Servidas con más de 114 días
+    if (estado === "S" && dias > MAX_GESTACION_DIAS) {
+      gestacionPasada++;
+    }
+
+    // Lactantes con más de 23 días
+    if (estado === "L" && dias > MAX_LACTANCIA_DIAS) {
+      lactanciaLarga++;
+    }
+
+    // Destetadas fuera de la ventana según reglas
+    if (estado === "W") {
+      let maxDiasPermitidos = MAX_W_OTROS_DIAS;
+
+      if (ubic === "LDC") {
+        maxDiasPermitidos = MAX_W_LDC_DIAS;
+      } else if (ubic === "ML" && genetica === "1020") {
+        maxDiasPermitidos = MAX_W_ML_1020_DIAS;
+      }
+
+      if (dias > maxDiasPermitidos) {
+        desteteFuera++;
+      }
+    }
+  });
+
+  return { gestacionPasada, lactanciaLarga, desteteFuera };
+}
+
+// Actualiza tarjetas de ventanas biológicas
+function actualizarVentanasBiologicas(gestacionPasada, lactanciaLarga, desteteFuera) {
+  const kGest = document.getElementById("kpi-gestacion-pasada");
+  const kLact = document.getElementById("kpi-lactancia-larga");
+  const kDest = document.getElementById("kpi-destete-fuera");
+
+  if (kGest) kGest.textContent = gestacionPasada;
+  if (kLact) kLact.textContent = lactanciaLarga;
+  if (kDest) kDest.textContent = desteteFuera;
 }
 
 // Gráfico de barras por estado
