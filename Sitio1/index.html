@@ -254,9 +254,40 @@
         </div>
       </div>
     </section>
+
+    <!-- Resultado búsqueda de hembra -->
+    <section class="mb-4">
+      <div class="card p-3 kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h6 mb-0">Búsqueda de hembra por código</h2>
+          <small id="label-busqueda" class="text-muted">
+            Ingresa un código y presiona Buscar
+          </small>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Código</th>
+                <th>Estado</th>
+                <th>Días</th>
+                <th>Partos</th>
+                <th>Ubicación</th>
+                <th>Genética</th>
+                <th>Grupo</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-busqueda">
+              <!-- Se rellena desde JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     
   </div>
 
-  <script src="js/dashboard.js?v=3"></script>
+  <script src="js/dashboard.js?v=4"></script>
 </body>
 </html>
