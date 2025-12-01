@@ -18,6 +18,7 @@ const MAX_W_LDC_DIAS     = 5;      // W en LDC
 const MAX_W_ML_1020_DIAS = 7;      // W en ML con genética 1020
 const MAX_W_OTROS_DIAS   = 5;      // W otros casos
 
+
 let estadoChart = null;
 let dataGlobal = [];   // CSV completo
 let filtros = {
@@ -25,6 +26,8 @@ let filtros = {
   genetica: "TODAS",
   partos: "TODOS"
 };
+
+let dataFiltradaActual = [];
 
 // Para detalle de ventanas biológicas
 let detalleVentanas = {
@@ -38,6 +41,7 @@ let tipoVentanaSeleccionado = "TODAS"; // GESTACION, LACTANCIA, DESTETE, TODAS
 document.addEventListener("DOMContentLoaded", () => {
   cargarDatosCSV("data/estado_madres_actual.csv");
   inicializarClicksTarjetas();
+  inicializarBusqueda(); 
 });
 
 // Leer CSV usando PapaParse
@@ -201,6 +205,7 @@ function aplicarFiltrosYActualizar() {
 
 // Procesar datos filtrados y alimentar KPIs, ventanas biológicas, gráfico y tabla
 function procesarDatosFiltrados(data) {
+  dataFiltradaActual = data;  // 👈 guarda la data filtrada actual
   if (!data || data.length === 0) {
     actualizarKPIs({
       total: 0,
@@ -533,6 +538,67 @@ function sugerirAccion(estado, dias, partos) {
   }
 
   return "-";
+}
+
+function inicializarBusqueda() {
+  const input = document.getElementById("busqueda-codigo");
+  const btn = document.getElementById("btn-buscar-codigo");
+  if (!input || !btn) return;
+
+  btn.addEventListener("click", () => buscarPorCodigo());
+  input.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") buscarPorCodigo();
+  });
+}
+
+function buscarPorCodigo() {
+  const input = document.getElementById("busqueda-codigo");
+  const tbody = document.getElementById("tabla-busqueda");
+  const label = document.getElementById("label-busqueda");
+  if (!input || !tbody || !label) return;
+
+  const codigoBuscado = input.value.trim().toUpperCase();
+  tbody.innerHTML = "";
+
+  if (!codigoBuscado) {
+    label.textContent = "Ingresa un código y presiona Buscar";
+    return;
+  }
+
+  // Buscamos dentro de la data filtrada actual (respeta Ubicación, Genética, Partos)
+  const resultados = dataFiltradaActual.filter(row => {
+    const cod = (row["Código"] || row["Codigo"] || "").toString().trim().toUpperCase();
+    return cod === codigoBuscado;
+  });
+
+  if (resultados.length === 0) {
+    label.textContent = `No se encontró hembra con código ${codigoBuscado} en el filtro actual`;
+    return;
+  }
+
+  label.textContent = `Resultados para código ${codigoBuscado} (${resultados.length})`;
+
+  resultados.forEach(row => {
+    const estado = (row["Estado"] || "").toString().trim().toUpperCase();
+    const dias = row["Dia Proceso"] || 0;
+    const partos = row["Partos"] || 0;
+    const codigo = row["Código"] || row["Codigo"] || "";
+    const ubicacion = row["Ubicación"] || row["Ubicacion"] || "";
+    const genetica = row["Genética"] || row["Genetica"] || "";
+    const grupo = row["Grupo"] || "";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${codigo}</td>
+      <td>${descripcionEstado(estado)}</td>
+      <td>${dias}</td>
+      <td>${partos}</td>
+      <td>${ubicacion}</td>
+      <td>${genetica}</td>
+      <td>${grupo}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 // Colores + descripción por estado
