@@ -72,29 +72,41 @@
     </header>
 
     <div id="top">
-      <!-- KPI cards -->
-      <div class="kpi-row">
-        <div class="kpi">
-          <small>Total inseminaciones</small>
-          <div id="kpi_services" class="value">—</div>
-        </div>
-        <div class="kpi">
-          <small>Total partos</small>
-          <div id="kpi_birthings" class="value">—</div>
-        </div>
-        <div class="kpi">
-          <small>Total destetes</small>
-          <div id="kpi_nweaned" class="value">—</div>
-        </div>
-        <div class="kpi">
-          <small>Piglets / parto · Conv. proxy</small>
-          <div style="display:flex;gap:10px;align-items:center">
-            <div id="kpi_ppp" class="value">—</div>
-            <div id="kpi_conv" class="value" style="font-size:15px;color:var(--muted)">—</div>
-          </div>
-        </div>
-      </div>
+     <!-- KPI cards (reemplazar la sección anterior) -->
+<div class="kpi-row">
+  <div id="card_services" class="kpi">
+    <small>Total inseminaciones (promedio últimas 10s)</small>
+    <div id="kpi_services" class="value">—</div>
+    <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+      Meta semanal: <strong id="meta_services">91</strong>
     </div>
+  </div>
+
+  <div id="card_birthings" class="kpi">
+    <small>Total partos (promedio últimas 10s)</small>
+    <div id="kpi_birthings" class="value">—</div>
+    <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+      Meta semanal: <strong id="meta_birthings">83</strong>
+    </div>
+  </div>
+
+  <div id="card_nweaned" class="kpi">
+    <small>Total destetes (promedio últimas 10s)</small>
+    <div id="kpi_nweaned" class="value">—</div>
+    <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+      Meta semanal: <strong id="meta_nweaned">1132</strong>
+    </div>
+  </div>
+
+  <div class="kpi">
+    <small>Piglets / parto · Conv. proxy</small>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div id="kpi_ppp" class="value">—</div>
+      <div id="kpi_conv" class="value" style="font-size:15px;color:var(--muted)">—</div>
+    </div>
+  </div>
+</div>
+
 
     <div id="estado">Cargando datos...</div>
 
