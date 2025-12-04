@@ -231,6 +231,13 @@
         const birth = datos.map(d => Number(d.birthings||0));
         const wean = datos.map(d => Number(d.nweaned||0));
 
+        // Usar solo las últimas N semanas en el gráfico
+        const LAST_N = 10;
+        const labels10 = labels.slice(-LAST_N);
+        const serv10   = serv.slice(-LAST_N);
+        const birth10  = birth.slice(-LAST_N);
+        const wean10   = wean.slice(-LAST_N);
+
         // promedios ultimas 10 semanas (KPI)
         const avgServices10 = avgLastN(serv, 10);
         const avgBirth10 = avgLastN(birth, 10);
@@ -281,26 +288,30 @@
         const ctx = document.getElementById('chartRepro').getContext('2d');
         if (window._reproChart) window._reproChart.destroy();
         window._reproChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: 'Inseminaciones', data: serv, borderWidth: 2, tension:0.2 },
-              { label: 'Inseminaciones MA(4)', data: servMA, borderDash: [6,4], borderWidth:1.5, tension:0.2 },
-              { label: 'Partos', data: birth, borderWidth: 2, tension:0.2 },
-              { label: 'Partos MA(4)', data: birthMA, borderDash: [6,4], borderWidth:1.5, tension:0.2 },
-              { label: 'Destetes', data: wean, borderWidth: 2, tension:0.2 },
-              { label: 'Destetes MA(4)', data: weanMA, borderDash: [6,4], borderWidth:1.5, tension:0.2 }
-            ]
-          },
-          options: {
-            responsive:true,
-            maintainAspectRatio:false,
-            interaction:{mode:'index',intersect:false},
-            plugins:{legend:{display:true}},
-            scales:{ x:{ ticks:{ maxTicksLimit: 14, autoSkip:true } }, y:{ beginAtZero:true } }
-          }
-        });
+            type: 'line',
+            data: {
+              labels: labels10,
+              datasets: [
+                { label: 'Inseminaciones', data: serv10, borderWidth: 2, tension:0.2 },
+                { label: 'Inseminaciones MA(4)', data: movingAverage(serv10,4), borderDash: [6,4], borderWidth:1.5, tension:0.2 },
+                { label: 'Partos', data: birth10, borderWidth: 2, tension:0.2 },
+                { label: 'Partos MA(4)', data: movingAverage(birth10,4), borderDash: [6,4], borderWidth:1.5, tension:0.2 },
+                { label: 'Destetes', data: wean10, borderWidth: 2, tension:0.2 },
+                { label: 'Destetes MA(4)', data: movingAverage(wean10,4), borderDash: [6,4], borderWidth:1.5, tension:0.2 }
+              ]
+            },
+            options: {
+              responsive:true,
+              maintainAspectRatio:false,
+              interaction:{mode:'index',intersect:false},
+              plugins:{legend:{display:true}},
+              scales:{
+                x:{ ticks:{ maxTicksLimit: 10, autoSkip:true } }, 
+                y:{ beginAtZero:true }
+              }
+            }
+          });
+
 
         // tabla
         const tbody = document.querySelector('#tabla tbody');
