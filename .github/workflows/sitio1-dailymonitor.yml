@@ -35,6 +35,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add sitio1/data/dailymonitor_sitio1.json
-          git commit -m "Actualización DailyMonitor Sitio 1" || echo "Sin cambios para commitear"
+          git add sitio1/data/factbreeding_sitio1.json
+          git commit -m "Actualización FactBreeding Sitio 1" || echo "Sin cambios para commitear"
           git push
