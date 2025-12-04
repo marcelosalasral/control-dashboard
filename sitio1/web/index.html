@@ -163,7 +163,7 @@
     async function cargarDatos() {
       const estado = document.getElementById('estado');
       try {
-        const resp = await fetch('./data/factbreeding_sitio1.json', {cache: "no-store"});
+        const resp = await fetch('../data/factbreeding_sitio1.json', {cache: "no-store"});
         if (!resp.ok) throw new Error('No se pudo cargar el JSON ('+resp.status+')');
 
         const datos = await resp.json();
