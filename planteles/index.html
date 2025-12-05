@@ -125,6 +125,23 @@
       .connector-dot{ display:none }
     }
 
+        .back-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      margin: 10px 0 18px 0;
+      transition: background 0.2s ease;
+    }
+    .back-btn:hover {
+      background: #1d6ab0;
+    }
+
+
   </style>
 </head>
 <body>
@@ -134,6 +151,9 @@
       <h1>📊 Regularización de Planteles</h1>
       <p class="lead">Línea de tiempo horizontal — izquierda → derecha. Haz clic en un hito para ver sus sub-hitos y documentos.</p>
     </div>
+
+    <a href="../index.html" class="back-btn">⬅ Volver al Menú Principal</a>
+    
     <div style="text-align:right;color:var(--muted);font-size:13px">Modo: Vista MVP · Local</div>
   </header>
 
