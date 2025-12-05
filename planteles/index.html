@@ -159,6 +159,25 @@
               <button id="btnDeleteSub" class="mini" style="background:#ef4444;color:#fff">Eliminar Sub-hito</button>
             </div>
 
+            <label for="selectDocEdit">Documentos (seleccionar para editar)</label>
+            <select id="selectDocEdit" style="width:100%"></select>
+            
+            <label for="editDocName" style="margin-top:8px">Nombre documento</label>
+            <input id="editDocName" type="text" />
+            
+            <label for="editDocStatus" style="margin-top:8px">Estado</label>
+            <select id="editDocStatus">
+              <option value="pending">Pendiente</option>
+              <option value="uploaded">Subido</option>
+              <option value="approved">Aprobado</option>
+            </select>
+            
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="btnSaveDoc" class="mini">Guardar Documento</button>
+              <button id="btnDeleteDoc" class="mini" style="background:#ef4444;color:#fff">Eliminar Documento</button>
+            </div>
+
+
             <hr style="margin:12px 0">
 
             <label for="newDocForSub">Agregar documento (al sub-hito seleccionado)</label>
@@ -174,7 +193,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
@@ -372,6 +390,19 @@ document.getElementById('selectSubEdit').addEventListener('change', (e) => {
   const s = h.subhitos.find(x=>x.id===sid);
   document.getElementById('editSubTitle').value = s ? s.title : '';
   document.getElementById('editSubAvance').value = s ? (s.avance||0) : '';
+
+  const selectDoc = document.getElementById('selectDocEdit');
+selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
+if (s && s.docs && s.docs.length) {
+  s.docs.forEach((docText, idx) => {
+    // si usas doc como string, index será el id temporal
+    const opt = document.createElement('option');
+    opt.value = idx; // posición en el array
+    opt.textContent = docText;
+    selectDoc.appendChild(opt);
+  });
+}
+  
 });
 
 /* Guardar cambios hito */
@@ -481,6 +512,62 @@ document.getElementById('btnResetSeed').addEventListener('click', ()=>{
   renderHitos();
   detalleArea.style.display = 'none';
 });
+
+document.getElementById('selectDocEdit').addEventListener('change', (e) => {
+  const docIndex = e.target.value;
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  if(!hid || !sid || docIndex === '') {
+    document.getElementById('editDocName').value = '';
+    return;
+  }
+  const h = data.find(x=>x.id === hid);
+  const s = h.subhitos.find(x=>x.id === sid);
+  const docText = s.docs[docIndex]; // actualmente string
+  // Si tu docText está en formato "Nombre [status]" parsea:
+  const match = docText.match(/^(.*)\s\[(.*)\]$/);
+  if(match){
+    document.getElementById('editDocName').value = match[1];
+    document.getElementById('editDocStatus').value = match[2];
+  } else {
+    document.getElementById('editDocName').value = docText;
+    document.getElementById('editDocStatus').value = 'pending';
+  }
+});
+
+document.getElementById('btnSaveDoc').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  const docIndex = document.getElementById('selectDocEdit').value;
+  if(!hid || !sid || docIndex === '') return alert('Selecciona hito, sub-hito y documento');
+  const h = data.find(x=>x.id === hid);
+  const s = h.subhitos.find(x=>x.id === sid);
+  const newName = document.getElementById('editDocName').value.trim();
+  const newStatus = document.getElementById('editDocStatus').value;
+  if(!newName) return alert('Ingresa nombre del documento');
+  // reconstruir string
+  s.docs[docIndex] = `${newName} [${newStatus}]`;
+  saveData(data);
+  populateConfigSelects(); // para refrescar selects
+  renderHitos(); // refrescar visual
+  alert('Documento guardado');
+});
+
+  document.getElementById('btnDeleteDoc').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  const docIndex = document.getElementById('selectDocEdit').value;
+  if(!hid || !sid || docIndex === '') return alert('Selecciona documento');
+  if(!confirm('Eliminar documento?')) return;
+  const h = data.find(x=>x.id === hid);
+  const s = h.subhitos.find(x=>x.id === sid);
+  s.docs.splice(docIndex, 1); // eliminar por índice
+  saveData(data);
+  populateConfigSelects();
+  renderHitos();
+  alert('Documento eliminado');
+});
+
 
 /* -------------------------
    Inicialización y eventos
