@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Regularización de Planteles — Admin MVP</title>
+  <title>Regularización de Planteles — Visual / Config</title>
   <style>
     :root{
       --bg:#f6f8fb;
@@ -13,43 +13,32 @@
       --glass: rgba(43,130,217,0.12);
       --line:#dceafc;
     }
-    body{
-      font-family: "Segoe UI", Arial, sans-serif;
-      margin:0;
-      padding:20px;
-      background:var(--bg);
-      color:#212529;
-    }
-    header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px}
-    h1{margin:0;font-size:20px;color:#233043}
-    p.lead{margin:0;color:var(--muted);font-size:14px}
+    body{ font-family: "Segoe UI", Arial, sans-serif; margin:0; padding:18px; background:var(--bg); color:#212529; }
+    header{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+    h1{ margin:0; font-size:20px; color:#233043 }
+    p.lead{ margin:0; color:var(--muted); font-size:13px }
 
-    .top-actions{display:flex;gap:10px;align-items:center;margin:10px 0 18px 0}
+    /* breadcrumb / volver */
+    .topbar { display:flex; gap:10px; align-items:center; margin:10px 0 18px 0; }
+    .back-btn { display:inline-block; background:var(--accent); color:white; padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600; }
+    .tabs { display:flex; gap:8px; margin-left:12px; }
+    .tab { padding:8px 12px; border-radius:8px; background:#fff; border:1px solid #eef2f7; cursor:pointer; font-weight:700; }
+    .tab.active { background:var(--accent); color:#fff; }
 
-    .btn{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
-    .btn.ghost{background:#f3f4f6;color:#222;border:1px solid #e6eaf0}
-    .btn.danger{background:#ef4444}
+    /* Contenedores principales */
+    .view-area{ margin-top:8px; }
 
-    .hitos-wrap{
-      position: relative;
-      background:transparent;
-      padding:28px 6px 34px;
-      overflow-x:auto;
-      white-space:nowrap;
-      margin-bottom:18px;
-      border-radius:8px;
-    }
+    /* ---- Visualización: linea de tiempo (igual que antes) ---- */
+    .hitos-wrap{ position: relative; background:transparent; padding:28px 6px 34px; overflow-x:auto; white-space:nowrap; margin-bottom:18px; border-radius:8px; }
     .connector-line { position:absolute; left:6px; right:6px; height:6px; background:linear-gradient(90deg,var(--line),rgba(0,0,0,0.02)); top:60%; transform:translateY(-50%); border-radius:6px; z-index:0; pointer-events:none; }
-    .hito-card{ display:inline-block; vertical-align:top; width:260px; margin:0 12px; background:var(--card); border-radius:12px; box-shadow:0 6px 20px rgba(13,23,36,0.06); border:2px solid transparent; padding:14px; cursor:pointer; transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease; position: relative; z-index:2;}
+    .hito-card{ display:inline-block; vertical-align:top; width:260px; margin:0 12px; background:var(--card); border-radius:12px; box-shadow:0 6px 20px rgba(13,23,36,0.06); border:2px solid transparent; padding:14px; cursor:pointer; transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease; position: relative; z-index:2; }
     .hito-card:hover{ transform:translateY(-6px); box-shadow:0 14px 30px rgba(13,23,36,0.09); }
     .hito-card.active{ border-color:var(--accent); box-shadow:0 18px 36px rgba(43,130,217,0.12); }
     .hito-title{ font-weight:700; color:#1f2937; margin-bottom:6px; font-size:15px; }
     .hito-desc{ color:var(--muted); font-size:13px; margin:0 0 8px 0; min-height:32px; }
     .hito-meta{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; }
     .badge{ font-size:12px; padding:6px 8px; border-radius:999px; background:var(--glass); color:var(--accent); font-weight:600; }
-
     .connector-dot { position:absolute; width:14px; height:14px; border-radius:999px; background:var(--card); border:3px solid var(--accent); box-shadow:0 6px 14px rgba(43,130,217,0.12); transform:translate(-50%,-50%); z-index:1; pointer-events:none; }
-
     .detalle-row{ width:100%; margin-top:8px; padding:0 6px; box-sizing:border-box; }
     .detalle-inner{ background:#fff; border-radius:10px; padding:12px; box-shadow:0 6px 20px rgba(0,0,0,0.04); display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
     .subhito{ flex:1 1 260px; background:#fafcff; border-radius:8px; padding:10px; border:1px solid #eef6ff; }
@@ -58,12 +47,14 @@
     .docs{ font-size:13px; color:var(--muted); padding-left:14px; margin:0;}
     .docs li{ margin:6px 0; }
 
+    /* ---- Configuración: panel admin separado ---- */
     .admin-panel{ background:#fff; padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); max-width:980px; margin-bottom:16px; }
     .form-row{ display:flex; gap:10px; margin-bottom:8px; align-items:center; }
-    input[type="text"], select { padding:8px;border-radius:8px;border:1px solid #e6eaf0; width:100%; }
+    input[type="text"], select, textarea { padding:8px;border-radius:8px;border:1px solid #e6eaf0; width:100%; }
     label{ font-size:13px; color:var(--muted); margin-bottom:6px; display:block; }
-
     .mini{ padding:6px 8px; font-size:13px }
+
+    .muted{ color:var(--muted); }
 
     @media (max-width:720px){
       .hito-card{ width:85%; display:block; margin:10px auto; }
@@ -71,6 +62,7 @@
       .subhito{ width:100%; flex-basis:100% }
       .connector-line{ display:none }
       .connector-dot{ display:none }
+      .tabs{ display:none }
     }
   </style>
 </head>
@@ -78,115 +70,139 @@
 
   <header>
     <div>
-      <h1>📊 Regularización de Planteles — Admin</h1>
-      <p class="lead">Agrega hitos, sub-hitos y documentos. Todo se guarda en tu navegador.</p>
+      <h1>📊 Regularización de Planteles</h1>
+      <p class="lead">Visualización y configuración separadas — cambia con las pestañas.</p>
     </div>
-    <div style="text-align:right;color:var(--muted);font-size:13px">Modo: MVP · Local</div>
+
+    <div style="display:flex;align-items:center">
+      <a href="../index.html" class="back-btn" title="Volver al menú">⬅ Menú</a>
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-view="visual" onclick="switchView('visual')">Visualización</div>
+        <div class="tab" data-view="config" onclick="switchView('config')">Configuración</div>
+      </div>
+    </div>
   </header>
 
-  <!-- Admin (agregar hito / export / reset) -->
-  <div class="admin-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong>Panel rápido</strong>
-      <div>
-        <button class="btn mini" id="btnExport">Exportar JSON</button>
-        <button class="btn ghost mini" id="btnResetSeed">Reset seed</button>
+  <div class="view-area">
+
+    <!-- ================= VISUALIZACIÓN ================= -->
+    <section id="visualView">
+      <div class="hitos-wrap" id="hitosWrap">
+        <div class="connector-line" id="connectorLine"></div>
+        <!-- tarjetas generadas por JS -->
       </div>
-    </div>
 
-    <div class="form-row">
-      <div style="flex:1">
-        <label for="newHitoTitle">Título del nuevo Hito</label>
-        <input id="newHitoTitle" type="text" placeholder="Ej: Hito 4 — Revisión final">
-      </div>
-      <div style="width:180px">
-        <label for="newHitoPriority">Prioridad</label>
-        <select id="newHitoPriority">
-          <option value="Alta">Alta</option>
-          <option value="Media">Media</option>
-          <option value="Baja">Baja</option>
-        </select>
-      </div>
-      <div style="width:120px;display:flex;align-items:end">
-        <button class="btn" id="btnAddHito">+ Agregar Hito</button>
-      </div>
-    </div>
-
-    <div style="margin-top:8px;color:var(--muted);font-size:13px">
-      Selecciona un hito haciendo clic en su tarjeta. Luego podrás agregar sub-hitos en el panel que aparece debajo.
-    </div>
-  </div>
-
-  <!-- HITOS HORIZONTALES -->
-  <div class="hitos-wrap" id="hitosWrap">
-    <div class="connector-line" id="connectorLine"></div>
-    <!-- Tarjetas se generarán por JS -->
-  </div>
-
-  <!-- DETALLE -->
-  <div id="detalleArea" class="detalle-row" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div><strong id="detalleTitulo">Detalle</strong></div>
-      <div>
-        <button id="btnRemoveHito" class="btn danger mini">Eliminar Hito</button>
-      </div>
-    </div>
-
-    <div class="detalle-inner" id="detalleInner">
-      <!-- Columna de subhitos -->
-      <div style="flex:1 1 420px; min-width:320px">
-        <div style="margin-bottom:8px; font-weight:700">Sub-hitos</div>
-        <div id="subContainer"></div>
-
-        <div style="margin-top:10px">
-          <label for="newSubTitle">Agregar Sub-hito (título)</label>
-          <input id="newSubTitle" type="text" placeholder="Ej: Revisión de planos">
-          <label for="newSubAvance" style="margin-top:8px">Avance %</label>
-          <input id="newSubAvance" type="text" placeholder="Ej: 30">
-          <button class="btn" id="btnAddSub" style="margin-top:8px">+ Agregar Sub-hito</button>
+      <div id="detalleArea" class="detalle-row" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><strong id="detalleTitulo">Detalle</strong></div>
         </div>
+        <div class="detalle-inner" id="detalleInner"></div>
       </div>
+    </section>
 
-      <!-- Columna de acciones / documentos -->
-      <div style="width:320px">
-        <div style="font-weight:700;margin-bottom:8px">Documentos (ejemplo)</div>
-        <p style="color:var(--muted);font-size:13px;margin-top:0">Los documentos se añaden como texto simple (más adelante conectaremos archivos/URLs).</p>
-        <label for="newDocText">Nombre documento</label>
-        <input id="newDocText" type="text" placeholder="Ej: Certificado municipal">
-        <label for="newDocStatus" style="margin-top:8px">Estado</label>
-        <select id="newDocStatus">
-          <option value="pending">Pendiente</option>
-          <option value="uploaded">Subido</option>
-          <option value="approved">Aprobado</option>
-        </select>
-        <button class="btn" id="btnAddDoc" style="margin-top:8px">+ Agregar Documento al Sub-hito</button>
+    <!-- ================= CONFIGURACIÓN (separada) ================= -->
+    <section id="configView" style="display:none">
+      <div class="admin-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Panel de configuración</strong>
+          <div>
+            <button class="mini" id="btnExport">Exportar JSON</button>
+            <button class="mini" id="btnResetSeed">Reset seed</button>
+          </div>
+        </div>
+
+        <!-- Agregar Hito -->
+        <div class="form-row">
+          <div style="flex:1">
+            <label for="newHitoTitle">Título del nuevo Hito</label>
+            <input id="newHitoTitle" type="text" placeholder="Ej: Hito 4 — Revisión final">
+          </div>
+          <div style="width:180px">
+            <label for="newHitoPriority">Prioridad</label>
+            <select id="newHitoPriority">
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+          <div style="width:120px;display:flex;align-items:end">
+            <button class="btn" id="btnAddHito">+ Agregar Hito</button>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0">
+
+        <!-- Selección para editar -->
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <label for="selectHitoEdit">Seleccionar Hito</label>
+            <select id="selectHitoEdit"></select>
+            <label for="editHitoDesc" style="margin-top:8px">Descripción</label>
+            <textarea id="editHitoDesc" rows="2"></textarea>
+            <label for="editHitoAvance" style="margin-top:8px">Avance % (numérico)</label>
+            <input id="editHitoAvance" type="text" />
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="btnSaveHito" class="mini">Guardar Hito</button>
+              <button id="btnDeleteHito" class="mini" style="background:#ef4444;color:#fff">Eliminar</button>
+            </div>
+          </div>
+
+          <div style="width:360px">
+            <label for="selectSubEdit">Sub-hitos (seleccione para editar)</label>
+            <select id="selectSubEdit" style="width:100%"></select>
+            <label for="editSubTitle" style="margin-top:8px">Título sub-hito</label>
+            <input id="editSubTitle" type="text" />
+            <label for="editSubAvance" style="margin-top:8px">Avance %</label>
+            <input id="editSubAvance" type="text" />
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="btnSaveSub" class="mini">Guardar Sub-hito</button>
+              <button id="btnDeleteSub" class="mini" style="background:#ef4444;color:#fff">Eliminar Sub-hito</button>
+            </div>
+
+            <hr style="margin:12px 0">
+
+            <label for="newDocForSub">Agregar documento (al sub-hito seleccionado)</label>
+            <input id="newDocForSub" type="text" placeholder="Nombre documento" />
+            <label for="newDocStatus" style="margin-top:8px">Estado</label>
+            <select id="newDocStatus">
+              <option value="pending">Pendiente</option>
+              <option value="uploaded">Subido</option>
+              <option value="approved">Aprobado</option>
+            </select>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="btnAddDocToSub" class="mini">+ Agregar Documento</button>
+            </div>
+          </div>
+        </div>
+
       </div>
-    </div>
-  </div>
+    </section>
+
+  </div> <!-- /view-area -->
 
 <script>
-/* =========================
-   Modelo + persistencia
-   ========================= */
-const STORAGE_KEY = 'planteles_v2';
+/* -------------------------
+   Modelo & persistencia
+   ------------------------- */
+const STORAGE_KEY = 'planteles_v3';
 
-// seed inicial (puedes editar aquí)
+// seed inicial
 const seed = [
   { id:'h1', title:'Hito 1 — Documentación Base', desc:'Actas, diagnósticos y recopilación inicial.', priority:'Alta', avance:42,
     subhitos:[
-      { id:'h1s1', title:'Revisión de antecedentes', avance:60, docs:['Acta de comité técnico (✔)','Informe diagnóstico (✔)','Plano actualizado (❌)'] },
-      { id:'h1s2', title:'Solicitud de documentos externos', avance:25, docs:['Certificado DOM (❌)','Certificado SAG (✔)'] }
+      { id:'h1s1', title:'Revisión de antecedentes', avance:60, docs:['Acta de comité técnico [approved]','Informe diagnóstico [approved]','Plano actualizado [pending]'] },
+      { id:'h1s2', title:'Solicitud de documentos externos', avance:25, docs:['Certificado DOM [pending]','Certificado SAG [approved]'] }
     ]
   },
   { id:'h2', title:'Hito 2 — Permisos Municipales', desc:'Requisitos y presentación al municipio.', priority:'Media', avance:10,
     subhitos:[
-      { id:'h2s1', title:'Revisión de normas', avance:10, docs:['Certificación sanitaria (❌)','Plan regulador (❌)'] },
-      { id:'h2s2', title:'Presentación preliminar', avance:0, docs:['Carta de inicio (❌)','Presentación técnica (❌)'] }
+      { id:'h2s1', title:'Revisión de normas', avance:10, docs:['Certificación sanitaria [pending]','Plan regulador [pending]'] },
+      { id:'h2s2', title:'Presentación preliminar', avance:0, docs:['Carta de inicio [pending]','Presentación técnica [pending]'] }
     ]
   },
   { id:'h3', title:'Hito 3 — Regularización Ambiental', desc:'Estudios, mitigaciones y certificados.', priority:'Baja', avance:0,
     subhitos:[
-      { id:'h3s1', title:'Estudios de impacto', avance:0, docs:['Estudio preliminar (❌)'] }
+      { id:'h3s1', title:'Estudios de impacto', avance:0, docs:['Estudio preliminar [pending]'] }
     ]
   }
 ];
@@ -201,23 +217,48 @@ function saveData(data){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-/* =========================
-   Render dinámico
-   ========================= */
+/* -------------------------
+   Estado en memoria
+   ------------------------- */
 let data = loadData();
-let currentOpen = null;
+let currentOpen = null; // hito abierto en visual
+let currentView = 'visual'; // 'visual' o 'config'
 
+/* -------------------------
+   UTIL: uid simple
+   ------------------------- */
+function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+/* -------------------------
+   VISTAS: switch entre pestañas
+   ------------------------- */
+function switchView(v){
+  currentView = v;
+  document.getElementById('visualView').style.display = v === 'visual' ? 'block' : 'none';
+  document.getElementById('configView').style.display = v === 'config' ? 'block' : 'none';
+  // tabs UI
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => { if(t.dataset.view === v) t.classList.add('active'); });
+
+  // cuando entres a configuración, actualiza selects
+  if(v === 'config') populateConfigSelects();
+  // cuando entres a visual, re-render connectors
+  if(v === 'visual') createConnectors();
+}
+
+/* -------------------------
+   RENDER: Hitos (visual)
+   ------------------------- */
 const wrap = document.getElementById('hitosWrap');
 const connectorLine = document.getElementById('connectorLine');
 const detalleArea = document.getElementById('detalleArea');
 const detalleInner = document.getElementById('detalleInner');
 const detalleTitulo = document.getElementById('detalleTitulo');
-const subContainer = document.getElementById('subContainer');
 
 function renderHitos(){
-  // limpiar
+  // limpiar anteriores
   wrap.querySelectorAll('.hito-card').forEach(n=>n.remove());
-  // crear tarjetas desde data
+  // crear tarjetas
   data.forEach(h => {
     const card = document.createElement('div');
     card.className = 'hito-card';
@@ -225,36 +266,33 @@ function renderHitos(){
     card.onclick = ()=> openHito(h.id, card);
     card.innerHTML = `
       <div class="hito-title">${h.title}</div>
-      <div class="hito-desc">${h.desc||''}</div>
+      <div class="hito-desc">${h.desc || ''}</div>
       <div class="hito-meta">
         <div class="badge">Avance ${h.avance || 0}%</div>
-        <div class="muted" style="font-size:12px;color:var(--muted)">${h.priority || ''}</div>
+        <div class="muted" style="font-size:12px">${h.priority || ''}</div>
       </div>
     `;
     wrap.appendChild(card);
   });
-  createConnectors(); // reposicionar linea y dots
+  createConnectors();
 }
 
+/* abrir/mostrar detalle de un hito (visual) */
 function openHito(id, el){
-  // desactivar tarjetas
+  // quitar active de otros
   document.querySelectorAll('.hito-card').forEach(c=>c.classList.remove('active'));
-  // si estaba abierto: cerrar
   if(currentOpen === id){
     detalleArea.style.display = 'none';
     currentOpen = null;
-    saveData(data);
     return;
   }
-  // activar tarjeta
   el.classList.add('active');
   currentOpen = id;
   const h = data.find(x=>x.id===id);
   detalleTitulo.textContent = `Detalle — ${h.title}`;
-  // rellenar subhitos
-  subContainer.innerHTML = '';
+  detalleInner.innerHTML = '';
   if(!h.subhitos || h.subhitos.length === 0){
-    subContainer.innerHTML = '<div class="subhito">Sin sub-hitos</div>';
+    detalleInner.innerHTML = '<div class="subhito">Sin sub-hitos</div>';
   } else {
     h.subhitos.forEach(s=>{
       const box = document.createElement('div');
@@ -263,30 +301,26 @@ function openHito(id, el){
       box.innerHTML = `<strong>${s.title}</strong>
                        <div class="sub-prog">Avance: ${s.avance || 0}%</div>
                        <ul class="docs">${docs}</ul>`;
-      subContainer.appendChild(box);
+      detalleInner.appendChild(box);
     });
   }
   detalleArea.style.display = 'block';
-  // scroll para centrar la tarjeta
   el.scrollIntoView({behavior:'smooth', inline:'center'});
-  saveData(data);
 }
 
-/* =========================
-   Connectors (line + dots)
-   ========================= */
+/* -------------------------
+   CONNECTORS: linea + dots
+   ------------------------- */
 function createConnectors(){
   // borrar dots previos
   document.querySelectorAll('.connector-dot').forEach(d=>d.remove());
   const cards = Array.from(wrap.querySelectorAll('.hito-card'));
   if(cards.length === 0){ connectorLine.style.display='none'; return; }
   const wrapRect = wrap.getBoundingClientRect();
-  // Tomamos la tarjeta visible más alta para calcular top
   const firstRect = cards[0].getBoundingClientRect();
   const lineTop = (firstRect.top + firstRect.height/2) - wrapRect.top + wrap.scrollTop;
   connectorLine.style.top = `${lineTop}px`;
   connectorLine.style.display = 'block';
-  // colocar dot por cada tarjeta
   cards.forEach(card => {
     const rect = card.getBoundingClientRect();
     const centerX = (rect.left + rect.right)/2 - wrapRect.left + wrap.scrollLeft;
@@ -298,59 +332,139 @@ function createConnectors(){
   });
 }
 
-/* =========================
-   Admin: agregar hito, sub, doc, export, reset
-   ========================= */
-function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+/* -------------------------
+   CONFIG: poblar selects y lógica
+   ------------------------- */
+function populateConfigSelects(){
+  const selectH = document.getElementById('selectHitoEdit');
+  const selectSub = document.getElementById('selectSubEdit');
+  selectH.innerHTML = '<option value="">-- seleccionar --</option>';
+  data.forEach(h => {
+    const opt = document.createElement('option'); opt.value = h.id; opt.textContent = h.title;
+    selectH.appendChild(opt);
+  });
+  selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
+}
 
+/* cuando seleccionas hito para editar, llenar campos */
+document.getElementById('selectHitoEdit').addEventListener('change', (e) => {
+  const id = e.target.value;
+  const h = data.find(x=>x.id===id);
+  document.getElementById('editHitoDesc').value = h ? (h.desc||'') : '';
+  document.getElementById('editHitoAvance').value = h ? (h.avance||0) : '';
+  // llenar sub-select
+  const selectSub = document.getElementById('selectSubEdit');
+  selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
+  if(h && h.subhitos){
+    h.subhitos.forEach(s => {
+      const opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.title;
+      selectSub.appendChild(opt);
+    });
+  }
+});
+
+/* cuando seleccionas sub-hito, llenar campos */
+document.getElementById('selectSubEdit').addEventListener('change', (e) => {
+  const sid = e.target.value;
+  const hid = document.getElementById('selectHitoEdit').value;
+  const h = data.find(x=>x.id===hid);
+  if(!h) return;
+  const s = h.subhitos.find(x=>x.id===sid);
+  document.getElementById('editSubTitle').value = s ? s.title : '';
+  document.getElementById('editSubAvance').value = s ? (s.avance||0) : '';
+});
+
+/* Guardar cambios hito */
+document.getElementById('btnSaveHito').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  if(!hid) return alert('Selecciona un hito para editar');
+  const h = data.find(x=>x.id===hid);
+  h.desc = document.getElementById('editHitoDesc').value.trim();
+  const av = parseInt(document.getElementById('editHitoAvance').value||'0',10);
+  h.avance = isNaN(av) ? 0 : av;
+  saveData(data);
+  renderHitos();
+  alert('Hito guardado');
+});
+
+/* Eliminar hito */
+document.getElementById('btnDeleteHito').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  if(!hid) return alert('Selecciona un hito');
+  if(!confirm('Eliminar hito?')) return;
+  data = data.filter(h=>h.id !== hid);
+  saveData(data);
+  populateConfigSelects();
+  renderHitos();
+});
+
+/* Agregar nuevo hito */
 document.getElementById('btnAddHito').addEventListener('click', ()=>{
   const title = document.getElementById('newHitoTitle').value.trim();
   const priority = document.getElementById('newHitoPriority').value;
   if(!title) return alert('Ingresa título del hito');
   const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] };
   data.push(newH);
+  saveData(data);
   document.getElementById('newHitoTitle').value = '';
+  populateConfigSelects();
   renderHitos();
-  saveData(data);
-  // abrir el nuevo
-  const newCard = wrap.querySelector(`.hito-card[data-id="${newH.id}"]`);
-  if(newCard) openHito(newH.id, newCard);
 });
 
-document.getElementById('btnAddSub').addEventListener('click', ()=>{
-  if(!currentOpen) return alert('Selecciona un hito primero.');
-  const title = document.getElementById('newSubTitle').value.trim();
-  const avance = parseInt(document.getElementById('newSubAvance').value || '0', 10);
-  if(!title) return alert('Ingresa título del sub-hito');
-  const h = data.find(x=>x.id === currentOpen);
-  if(!h.subhitos) h.subhitos = [];
-  const s = { id: uid('s'), title, avance: isNaN(avance)?0:avance, docs:[] };
-  h.subhitos.push(s);
-  document.getElementById('newSubTitle').value = '';
-  document.getElementById('newSubAvance').value = '';
-  openHito(currentOpen, document.querySelector(`.hito-card[data-id="${currentOpen}"]`));
-  renderHitos();
+/* Guardar sub-hito (editar) */
+document.getElementById('btnSaveSub').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  if(!hid || !sid) return alert('Selecciona hito y sub-hito');
+  const h = data.find(x=>x.id===hid);
+  const s = h.subhitos.find(x=>x.id===sid);
+  s.title = document.getElementById('editSubTitle').value.trim();
+  const av = parseInt(document.getElementById('editSubAvance').value||'0',10);
+  s.avance = isNaN(av) ? 0 : av;
   saveData(data);
+  populateConfigSelects();
+  renderHitos();
+  alert('Sub-hito guardado');
 });
 
-document.getElementById('btnAddDoc').addEventListener('click', ()=>{
-  if(!currentOpen) return alert('Selecciona un hito primero.');
-  const docText = document.getElementById('newDocText').value.trim();
+/* Eliminar sub-hito */
+document.getElementById('btnDeleteSub').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  if(!hid || !sid) return alert('Selecciona hito y sub-hito');
+  if(!confirm('Eliminar sub-hito?')) return;
+  const h = data.find(x=>x.id===hid);
+  h.subhitos = h.subhitos.filter(s=>s.id !== sid);
+  saveData(data);
+  populateConfigSelects();
+  renderHitos();
+});
+
+/* Agregar documento a sub-hito seleccionado */
+document.getElementById('btnAddDocToSub').addEventListener('click', ()=>{
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  const txt = document.getElementById('newDocForSub').value.trim();
   const status = document.getElementById('newDocStatus').value;
-  if(!docText) return alert('Ingresa el nombre del documento');
-  // añadir al primer subhito activo (si quieres seleccionar subhito podemos mejorar UX luego)
-  const h = data.find(x=>x.id === currentOpen);
-  if(!h || !h.subhitos || h.subhitos.length === 0) return alert('Agrega un sub-hito primero.');
-  // por simplicidad agregamos al último sub-hito
-  const lastSub = h.subhitos[h.subhitos.length - 1];
-  lastSub.docs = lastSub.docs || [];
-  lastSub.docs.push(`${docText} [${status}]`);
-  document.getElementById('newDocText').value = '';
-  openHito(currentOpen, document.querySelector(`.hito-card[data-id="${currentOpen}"]`));
+  if(!hid || !sid) return alert('Selecciona hito y sub-hito');
+  if(!txt) return alert('Ingresa nombre de documento');
+  const h = data.find(x=>x.id===hid);
+  const s = h.subhitos.find(x=>x.id===sid);
+  s.docs = s.docs || [];
+  s.docs.push(`${txt} [${status}]`);
+  document.getElementById('newDocForSub').value = '';
   saveData(data);
+  populateConfigSelects();
   renderHitos();
+  alert('Documento agregado');
 });
 
+/* Agregar sub-hito (desde config) - si no hay sub seleccionado agrega al hito seleccionado */
+document.getElementById('selectHitoEdit').addEventListener('dblclick', ()=>{
+  // uso práctico: doble clic en select para agregar rápido (puedes quitar si no quieres)
+});
+
+/* Exportar JSON */
 document.getElementById('btnExport').addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -358,30 +472,30 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
+/* Reset seed */
 document.getElementById('btnResetSeed').addEventListener('click', ()=>{
   if(!confirm('Restaurar datos iniciales? Esto reemplazará los datos guardados en este navegador.')) return;
   data = JSON.parse(JSON.stringify(seed));
   saveData(data);
+  populateConfigSelects();
   renderHitos();
   detalleArea.style.display = 'none';
 });
 
-/* Eliminar hito seleccionado */
-document.getElementById('btnRemoveHito').addEventListener('click', ()=>{
-  if(!currentOpen) return alert('Selecciona un hito primero.');
-  if(!confirm('Eliminar este hito?')) return;
-  data = data.filter(h=>h.id !== currentOpen);
-  currentOpen = null;
-  detalleArea.style.display = 'none';
+/* -------------------------
+   Inicialización y eventos
+   ------------------------- */
+window.addEventListener('load', ()=>{
   renderHitos();
-  saveData(data);
+  createConnectors();
+  populateConfigSelects();
 });
 
-/* recalc connectors en eventos */
-window.addEventListener('load', ()=>{ renderHitos(); });
+// recalcular connectors en resize/scroll
 window.addEventListener('resize', ()=>{ createConnectors(); });
 wrap.addEventListener('scroll', ()=>{ window.requestAnimationFrame(createConnectors); });
 
 </script>
 </body>
 </html>
+
