@@ -1,4 +1,3 @@
-
 /* ============================================
    Persistencia y datos iniciales
 ============================================ */
@@ -44,6 +43,11 @@ function saveData(data){
 let data = loadData();
 let currentOpen = null;
 let currentView = 'visual';
+
+/* Para mantener últimas selecciones al repoblar */
+let lastSelectedHito = '';
+let lastSelectedSub = '';
+let lastSelectedDoc = '';
 
 /* UID simple */
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
@@ -173,12 +177,17 @@ function createConnectors(){
 }
 
 /* ============================================
-   CONFIGURACIÓN — Selects
+   CONFIGURACIÓN — Selects (cascada)
 ============================================ */
 function populateConfigSelects(){
   const selectH = document.getElementById('selectHitoEdit');
   const selectSub = document.getElementById('selectSubEdit');
   const selectDoc = document.getElementById('selectDocEdit');
+
+  // Guardar selección previa
+  const prevH = lastSelectedHito || selectH.value || '';
+  const prevS = lastSelectedSub || selectSub.value || '';
+  const prevD = lastSelectedDoc || selectDoc.value || '';
 
   selectH.innerHTML = '<option value="">-- seleccionar --</option>';
   data.forEach(h=>{
@@ -187,8 +196,65 @@ function populateConfigSelects(){
     selectH.appendChild(o);
   });
 
+  // Restablecer selects hijos
   selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
   selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
+
+  // Intentar restaurar selección de hito si existe
+  if(prevH && data.find(x=>x.id===prevH)){
+    selectH.value = prevH;
+    // trigger change para poblar sub-hitos
+    selectH.dispatchEvent(new Event('change'));
+    // Después de poblar, intentar restaurar sub y doc
+    setTimeout(()=>{
+      if(prevS){
+        const subOpt = Array.from(selectSub.options).find(o=>o.value===prevS);
+        if(subOpt) selectSub.value = prevS;
+        selectSub.dispatchEvent(new Event('change'));
+        setTimeout(()=>{
+          if(prevD){
+            const docOpt = Array.from(selectDoc.options).find(o=>o.value===prevD);
+            if(docOpt) selectDoc.value = prevD;
+            selectDoc.dispatchEvent(new Event('change'));
+          }
+        }, 0);
+      }
+    },0);
+  } else {
+    updateControlsState();
+  }
+}
+
+/* ============================================
+   Helpers: recalcular avance del hito (promedio simple)
+============================================ */
+function recalcHitoAvance(h){
+  if(!h || !h.subhitos || h.subhitos.length===0) return;
+  const sum = h.subhitos.reduce((acc,s)=> acc + (parseInt(s.avance||0,10)||0), 0);
+  const avg = Math.round(sum / h.subhitos.length);
+  h.avance = avg;
+}
+
+/* Habilitar/Deshabilitar botones según selección */
+function updateControlsState(){
+  const hid = document.getElementById('selectHitoEdit').value;
+  const sid = document.getElementById('selectSubEdit').value;
+  const did = document.getElementById('selectDocEdit').value;
+
+  // Hito buttons
+  document.getElementById('btnSaveHito').disabled = !hid;
+  document.getElementById('btnDeleteHito').disabled = !hid;
+
+  // Sub buttons
+  document.getElementById('btnSaveSub').disabled = !(hid && sid);
+  document.getElementById('btnDeleteSub').disabled = !(hid && sid);
+  document.getElementById('btnAddSubConfirm').disabled = !hid;
+
+  // Doc buttons
+  document.getElementById('btnSaveDoc').disabled = !(hid && sid && did!=='');
+  document.getElementById('btnDeleteDoc').disabled = !(hid && sid && did!=='');
+  const btnAddDoc = document.getElementById('btnAddDocConfirm');
+  if(btnAddDoc) btnAddDoc.disabled = !(hid && sid);
 }
 
 /* ============================================
@@ -196,30 +262,46 @@ function populateConfigSelects(){
 ============================================ */
 document.getElementById('selectHitoEdit').addEventListener('change',(e)=>{
   const hid=e.target.value;
+  lastSelectedHito = hid;
+  lastSelectedSub = '';
+  lastSelectedDoc = '';
+
   const h = data.find(x=>x.id===hid);
 
   document.getElementById('editHitoDesc').value = h? (h.desc||'') : '';
   document.getElementById('editHitoAvance').value = h? (h.avance||0) : '';
+  if(h) document.getElementById('editHitoPriority').value = h.priority || 'Media';
 
   const selectSub = document.getElementById('selectSubEdit');
   selectSub.innerHTML='<option value="">-- seleccionar sub-hito --</option>';
 
-  if(h && h.subhitos){
+  if(h && h.subhitos && h.subhitos.length){
     h.subhitos.forEach(s=>{
       const opt=document.createElement('option');
       opt.value=s.id;
       opt.textContent=s.title;
       selectSub.appendChild(opt);
     });
+    // Auto-seleccionar el primer sub-hito y disparar su change para llenar los campos
+    selectSub.value = h.subhitos[0].id;
+    lastSelectedSub = selectSub.value;
+    selectSub.dispatchEvent(new Event('change'));
+  } else {
+    // No hay sub-hitos: limpiar campos relacionados
+    document.getElementById('editSubTitle').value = '';
+    document.getElementById('editSubAvance').value = '';
+    document.getElementById('selectDocEdit').innerHTML = '<option value="">-- seleccionar documento --</option>';
+    document.getElementById('editDocName').value = '';
+    document.getElementById('editDocStatus').value = 'pending';
   }
 
-  document.getElementById('selectDocEdit').innerHTML='<option value="">-- seleccionar documento --</option>';
+  updateControlsState();
 });
 
 /* Guardar Hito */
 document.getElementById('btnSaveHito').addEventListener('click',()=>{
   const hid=document.getElementById('selectHitoEdit').value;
-  if(!hid) return alert('Selecciona un hito');
+  if(!hid) return alert('Selecciona un hito antes de guardar');
 
   const h = data.find(x=>x.id===hid);
   h.desc = document.getElementById('editHitoDesc').value.trim();
@@ -227,9 +309,12 @@ document.getElementById('btnSaveHito').addEventListener('click',()=>{
   const av = parseInt(document.getElementById('editHitoAvance').value||'0',10);
   h.avance = isNaN(av)?0:av;
 
+  h.priority = document.getElementById('editHitoPriority').value || h.priority;
+
   saveData(data);
   renderHitos();
-  alert('Hito guardado');
+  populateConfigSelects();
+  showNotice('Hito guardado');
 });
 
 /* Eliminar Hito */
@@ -241,11 +326,15 @@ document.getElementById('btnDeleteHito').addEventListener('click',()=>{
   data = data.filter(h=>h.id!==hid);
   saveData(data);
 
+  lastSelectedHito = '';
+  lastSelectedSub = '';
+  lastSelectedDoc = '';
+
   populateConfigSelects();
   renderHitos();
 });
 
-/* Agregar Hito */
+/* Agregar Hito (desde formulario inline) */
 document.getElementById('btnAddHito').addEventListener('click',()=>{
   const title=document.getElementById('newHitoTitle').value.trim();
   const priority=document.getElementById('newHitoPriority').value;
@@ -265,6 +354,7 @@ document.getElementById('btnAddHito').addEventListener('click',()=>{
   saveData(data);
 
   document.getElementById('newHitoTitle').value='';
+  lastSelectedHito = newH.id;
   populateConfigSelects();
   renderHitos();
 });
@@ -274,6 +364,9 @@ document.getElementById('btnAddHito').addEventListener('click',()=>{
 ============================================ */
 document.getElementById('selectSubEdit').addEventListener('change',(e)=>{
   const sid=e.target.value;
+  lastSelectedSub = sid;
+  lastSelectedDoc = '';
+
   const hid=document.getElementById('selectHitoEdit').value;
   const h = data.find(x=>x.id===hid);
   const s = h? h.subhitos.find(x=>x.id===sid) : null;
@@ -292,7 +385,20 @@ document.getElementById('selectSubEdit').addEventListener('change',(e)=>{
       opt.textContent=docText;
       selectDoc.appendChild(opt);
     });
+    // Auto-seleccionar el primero
+    if(s.docs.length) {
+      selectDoc.value = 0;
+      lastSelectedDoc = '0';
+      selectDoc.dispatchEvent(new Event('change'));
+    }
+  } else {
+    // limpiar campos de documento
+    document.getElementById('editDocName').value = '';
+    document.getElementById('editDocStatus').value = 'pending';
+    selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
   }
+
+  updateControlsState();
 });
 
 /* Guardar Sub-Hito */
@@ -300,7 +406,8 @@ document.getElementById('btnSaveSub').addEventListener('click',()=>{
   const hid=document.getElementById('selectHitoEdit').value;
   const sid=document.getElementById('selectSubEdit').value;
 
-  if(!hid || !sid) return alert('Selecciona hito y sub-hito');
+  if(!hid) return alert('Selecciona un hito antes de guardar el sub-hito');
+  if(!sid) return alert('Selecciona un sub-hito o crea uno nuevo usando el formulario "Nuevo sub-hito"');
 
   const h=data.find(x=>x.id===hid);
   const s=h.subhitos.find(x=>x.id===sid);
@@ -309,10 +416,55 @@ document.getElementById('btnSaveSub').addEventListener('click',()=>{
   const av=parseInt(document.getElementById('editSubAvance').value||'0',10);
   s.avance=isNaN(av)?0:av;
 
+  // recalcular avance del hito padre
+  recalcHitoAvance(h);
+
   saveData(data);
+  lastSelectedHito = hid;
+  lastSelectedSub = sid;
   populateConfigSelects();
   renderHitos();
-  alert('Sub-hito guardado');
+
+  showNotice('Sub-hito guardado');
+});
+
+/* Confirmación creación de nuevo sub-hito (formulario inline) */
+document.getElementById('btnAddSubConfirm')?.addEventListener('click',()=>{
+  const hid=document.getElementById('selectHitoEdit').value;
+  if(!hid) return alert('Selecciona un hito antes de agregar sub-hito');
+
+  const title = document.getElementById('newSubTitle').value.trim();
+  const avance = parseInt(document.getElementById('newSubAvance').value||'0',10);
+
+  if(!title) return alert('Ingresa título para el sub-hito');
+
+  const h = data.find(x=>x.id===hid);
+  if(!h.subhitos) h.subhitos = [];
+
+  const newSub = {
+    id: uid('s'),
+    title,
+    avance: isNaN(avance)?0:avance,
+    docs: []
+  };
+
+  h.subhitos.push(newSub);
+  // recalcular hito
+  recalcHitoAvance(h);
+
+  saveData(data);
+
+  // limpiar campos nuevo sub
+  document.getElementById('newSubTitle').value = '';
+  document.getElementById('newSubAvance').value = '0';
+
+  // Repoblar selects y dejar seleccionado el nuevo sub-hito
+  lastSelectedHito = hid;
+  lastSelectedSub = newSub.id;
+  populateConfigSelects();
+  renderHitos();
+
+  showNotice('Sub-hito creado');
 });
 
 /* Eliminar Sub-Hito */
@@ -326,9 +478,17 @@ document.getElementById('btnDeleteSub').addEventListener('click',()=>{
   const h=data.find(x=>x.id===hid);
   h.subhitos = h.subhitos.filter(s=>s.id!==sid);
 
+  // recalcular hito
+  recalcHitoAvance(h);
+
   saveData(data);
+  lastSelectedSub = '';
+  lastSelectedDoc = '';
+  lastSelectedHito = hid;
   populateConfigSelects();
   renderHitos();
+
+  showNotice('Sub-hito eliminado');
 });
 
 /* ============================================
@@ -336,11 +496,14 @@ document.getElementById('btnDeleteSub').addEventListener('click',()=>{
 ============================================ */
 document.getElementById('selectDocEdit').addEventListener('change',(e)=>{
   const docIndex=e.target.value;
+  lastSelectedDoc = docIndex;
+
   const hid=document.getElementById('selectHitoEdit').value;
   const sid=document.getElementById('selectSubEdit').value;
 
   if(!hid || !sid || docIndex===''){
     document.getElementById('editDocName').value='';
+    updateControlsState();
     return;
   }
 
@@ -357,6 +520,8 @@ document.getElementById('selectDocEdit').addEventListener('change',(e)=>{
     document.getElementById('editDocName').value = docText;
     document.getElementById('editDocStatus').value = 'pending';
   }
+
+  updateControlsState();
 });
 
 /* Guardar Documento */
@@ -378,10 +543,47 @@ document.getElementById('btnSaveDoc').addEventListener('click',()=>{
   s.docs[docIndex] = `${newName} [${newStatus}]`;
 
   saveData(data);
+  lastSelectedHito = hid;
+  lastSelectedSub = sid;
+  lastSelectedDoc = docIndex;
   populateConfigSelects();
   renderHitos();
 
-  alert('Documento guardado');
+  showNotice('Documento guardado');
+});
+
+/* Agregar Documento (formulario inline) */
+document.getElementById('btnAddDocConfirm')?.addEventListener('click',()=>{
+  const hid=document.getElementById('selectHitoEdit').value;
+  const sid=document.getElementById('selectSubEdit').value;
+
+  if(!hid || !sid) return alert('Selecciona hito y sub-hito antes de agregar documento');
+
+  const name = document.getElementById('newDocName').value.trim();
+  const status = document.getElementById('newDocStatus').value;
+
+  if(!name) return alert('Ingresa nombre para el documento');
+
+  const h = data.find(x=>x.id===hid);
+  const s = h.subhitos.find(x=>x.id===sid);
+  if(!s.docs) s.docs = [];
+
+  s.docs.push(`${name} [${status}]`);
+
+  saveData(data);
+
+  // limpiar campos nuevo documento
+  document.getElementById('newDocName').value = '';
+  document.getElementById('newDocStatus').value = 'pending';
+
+  // Repoblar selects y seleccionar el nuevo doc (último)
+  lastSelectedHito = hid;
+  lastSelectedSub = sid;
+  lastSelectedDoc = String(s.docs.length - 1);
+  populateConfigSelects();
+  renderHitos();
+
+  showNotice('Documento agregado');
 });
 
 /* Eliminar Documento */
@@ -399,16 +601,19 @@ document.getElementById('btnDeleteDoc').addEventListener('click',()=>{
   s.docs.splice(docIndex,1);
 
   saveData(data);
+  lastSelectedHito = hid;
+  lastSelectedSub = sid;
+  lastSelectedDoc = '';
   populateConfigSelects();
   renderHitos();
 
-  alert('Documento eliminado');
+  showNotice('Documento eliminado');
 });
 
 /* ============================================
    Exportar JSON
 ============================================ */
-document.getElementById('btnExport').addEventListener('click',()=>{
+document.getElementById('btnExport')?.addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
 
@@ -421,11 +626,15 @@ document.getElementById('btnExport').addEventListener('click',()=>{
 });
 
 /* Reset a seed */
-document.getElementById('btnResetSeed').addEventListener('click',()=>{
+document.getElementById('btnResetSeed')?.addEventListener('click',()=>{
   if(!confirm('¿Restaurar datos iniciales?')) return;
 
   data = JSON.parse(JSON.stringify(seed));
   saveData(data);
+
+  lastSelectedHito = '';
+  lastSelectedSub = '';
+  lastSelectedDoc = '';
 
   populateConfigSelects();
   renderHitos();
@@ -434,14 +643,25 @@ document.getElementById('btnResetSeed').addEventListener('click',()=>{
 });
 
 /* ============================================
+   Utilidades UI
+============================================ */
+function showNotice(msg, timeout=3000){
+  const n = document.getElementById('configNotice');
+  if(!n) { console.log('NOTICE:', msg); return; }
+  n.textContent = msg; n.style.display = 'block';
+  setTimeout(()=>{ n.style.display = 'none'; n.textContent = ''; }, timeout);
+}
+
+/* ============================================
    Inicialización
 ============================================ */
 window.addEventListener('load',()=>{
   renderHitos();
   createConnectors();
   populateConfigSelects();
+  // Asegurarse de que el estado de controles está correcto al inicio
+  updateControlsState();
 });
 
 window.addEventListener('resize',()=> createConnectors());
-wrap.addEventListener('scroll',()=> window.requestAnimationFrame(createConnectors));
-
+wrap.addEventListener('scroll',()=> window.requestAnimationFrame(createConnectors()));
