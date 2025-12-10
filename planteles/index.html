@@ -1,108 +1,217 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Planteles — Línea de Avance</title>
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="styles.css">
-    <style>
-      /* Pequeños estilos inline para mejorar la vista de configuración visual */
-      .config-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
-      #hitosConfigWrap { display:flex; gap:12px; align-items:flex-start; padding:8px; overflow:auto; border:1px dashed #ddd; min-height:120px; }
-      .hito-card.config { width:260px; cursor:grab; position:relative; padding:10px; border:1px solid #ccc; background:#fff; border-radius:6px; }
-      .card-meta { margin-top:8px; font-size:13px; color:#666; }
-      .card-actions { display:flex; gap:6px; margin-top:8px; }
-      .sub-list { margin-top:8px; padding-left:10px; }
-      .sub-item { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:4px 0; }
-      .doc-list { margin-top:6px; padding-left:14px; font-size:13px; color:#444; }
-      .drag-handle { position:absolute; top:6px; right:6px; cursor:grab; font-size:12px; opacity:.6; }
-      .editing { outline:2px dashed #38f3; }
-      .small-input { width: 100%; box-sizing:border-box; }
-      /* pequeño estilo para el enlace volver si .btn no existe */
-      .btn-back { padding:6px 10px; border-radius:4px; border:1px solid #ccc; background:#f7f7f7; text-decoration:none; color:#222; font-size:14px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard Planteles — Línea de Avance</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Pequeños estilos locales para consistencia */
+    .topbar { display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #eee; }
+    .tabs { display:flex; gap:8px; }
+    .tab { padding:6px 10px; border-radius:4px; background:#f3f3f3; border:1px solid #ddd; cursor:pointer; }
+    .tab.active { background:#e0f0ff; border-color:#9fd0ff; }
+    .btn { padding:6px 10px; border-radius:4px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; }
+    .btn.blue { background:#007bff; color:#fff; border-color:#0069d9; }
+    .btn.red { background:#dc3545; color:#fff; border-color:#c82333; }
+    .btn.green { background:#28a745; color:#fff; border-color:#218838; }
+    .hitos-wrap { display:flex; gap:12px; padding:12px; overflow:auto; }
+    .hito-card { min-width:220px; padding:10px; border:1px solid #ddd; border-radius:6px; background:#fff; cursor:pointer; }
+    .connector-line { height:2px; background:#ddd; position:relative; margin-top:12px; }
+    .connector-dot { width:8px; height:8px; background:#007bff; border-radius:50%; position:absolute; top:0; transform:translate(-50%, -50%); }
+    .detalle-area { padding:12px; border-top:1px solid #eee; margin-top:8px; }
+    .config-box { margin:8px 0; padding:8px; border:1px solid #eee; border-radius:6px; background:#fafafa; }
+    .btn-row { display:flex; gap:8px; margin-top:8px; }
+    .muted { color:#666; }
+    .full { width:100%; }
+  </style>
 </head>
 <body>
 
-    <!-- ============================
-         BARRA SUPERIOR
-    ============================= -->
-    <header class="topbar" style="display:flex;align-items:center;gap:12px;">
-        <h1 style="margin:0">Dashboard Planteles — Línea de Avance</h1>
+  <!-- BARRA SUPERIOR -->
+  <header class="topbar">
+    <h1 style="margin:0;font-size:18px">Dashboard Planteles — Línea de Avance</h1>
 
-        <div class="tabs" style="margin-left:12px;">
-            <button class="tab active" data-view="visual" onclick="switchView('visual')">Visualización</button>
-            <button class="tab" data-view="config" onclick="switchView('config')">Configuración</button>
-        </div>
+    <div class="tabs" style="margin-left:12px;">
+      <button class="tab active" data-view="visual" onclick="switchView('visual')">Visualización</button>
+      <button class="tab" data-view="config" onclick="switchView('config')">Configuración</button>
+    </div>
 
-        <!-- Botón Menu (misma clase .btn que el resto, texto "Menu") -->
-        <div style="margin-left:auto;">
-          <!-- Ajusta href="../index.html" si tu index principal está en otra ruta -->
-          <a id="btnMenu" class="btn" href="../index.html" title="Ir al menú principal">Menu</a>
-        </div>
-    </header>
+    <!-- Botón Menu con mismo diseño que otros botones -->
+    <div style="margin-left:auto;">
+      <button id="btnMenu" class="btn" title="Ir al menú principal">Menu</button>
+    </div>
+  </header>
 
+  <!-- VISUALIZACIÓN -->
+  <section id="visualView">
+    <div id="hitosWrap" class="hitos-wrap">
+      <div id="connectorLine" class="connector-line"></div>
+    </div>
 
-    <!-- ============================
-         VISUALIZACIÓN
-    ============================= -->
-    <section id="visualView">
+    <div id="detalleArea" class="detalle-area" style="display:none;">
+      <h2 id="detalleTitulo"></h2>
+      <div id="detalleInner"></div>
+    </div>
+  </section>
 
-        <div id="hitosWrap" class="hitos-wrap">
-            <!-- Línea horizontal -->
-            <div id="connectorLine" class="connector-line"></div>
-        </div>
+  <!-- CONFIGURACIÓN -->
+  <section id="configView" style="display:none; padding:12px;">
 
-        <!-- Detalle del hito -->
-        <div id="detalleArea" class="detalle-area">
-            <h2 id="detalleTitulo"></h2>
-            <div id="detalleInner"></div>
-        </div>
+    <h2>Editar Hito</h2>
+    <div class="config-box">
+      <label>Seleccionar hito:</label>
+      <select id="selectHitoEdit"></select>
 
-    </section>
+      <label>Descripción:</label>
+      <textarea id="editHitoDesc"></textarea>
 
+      <label>Avance (%):</label>
+      <input type="number" id="editHitoAvance" min="0" max="100">
 
-    <!-- ============================
-         CONFIGURACIÓN (vista visual e interactiva)
-    ============================= -->
-    <section id="configView" style="display:none;">
+      <label>Prioridad:</label>
+      <select id="editHitoPriority">
+        <option value="Alta">Alta</option>
+        <option value="Media">Media</option>
+        <option value="Baja">Baja</option>
+      </select>
 
-      <div class="config-toolbar">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label><strong>Modo configuración visual</strong></label>
-        </div>
+      <div class="btn-row">
+        <button id="btnSaveHito" class="btn green">Guardar</button>
+        <button id="btnDeleteHito" class="btn red">Eliminar</button>
+      </div>
+    </div>
 
-        <div style="margin-left:auto; display:flex; gap:8px;">
-          <input id="addHitoTitleInput" placeholder="Título nuevo hito" />
-          <select id="addHitoPriority">
-            <option value="Alta">Alta</option>
-            <option value="Media" selected>Media</option>
-            <option value="Baja">Baja</option>
-          </select>
-          <button id="btnAddHitoVisual" class="btn blue">Agregar Hito</button>
-          <button id="btnResetSeed" class="btn red">Restaurar datos iniciales</button>
-        </div>
+    <h2>Editar Sub-Hito</h2>
+    <div class="config-box">
+      <label>Seleccionar sub-hito:</label>
+      <select id="selectSubEdit"></select>
+
+      <label>Título del sub-hito:</label>
+      <input type="text" id="editSubTitle">
+
+      <label>Avance (%):</label>
+      <input type="number" id="editSubAvance" min="0" max="100">
+
+      <div class="btn-row">
+        <button id="btnSaveSub" class="btn green">Guardar</button>
+        <button id="btnDeleteSub" class="btn red">Eliminar</button>
       </div>
 
-      <div id="hitosConfigWrap" aria-label="Hitos configurables">
-        <!-- Aquí se renderizan las tarjetas editables de hitos -->
+      <!-- inline nuevo sub-hito -->
+      <div style="margin-top:8px;">
+        <input id="newSubTitle" placeholder="Título nuevo sub-hito" />
+        <input id="newSubAvance" type="number" min="0" max="100" value="0" />
+        <button id="btnAddSubConfirm" class="btn">Crear sub-hito</button>
+      </div>
+    </div>
+
+    <h2>Editar Documentos</h2>
+    <div class="config-box">
+      <label>Seleccionar documento:</label>
+      <select id="selectDocEdit"></select>
+
+      <label>Nombre:</label>
+      <input type="text" id="editDocName">
+
+      <label>Estado:</label>
+      <select id="editDocStatus">
+        <option value="pending">Pendiente</option>
+        <option value="approved">Aprobado</option>
+        <option value="rejected">Rechazado</option>
+      </select>
+
+      <div class="btn-row">
+        <button id="btnSaveDoc" class="btn green">Guardar</button>
+        <button id="btnDeleteDoc" class="btn red">Eliminar</button>
       </div>
 
-      <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-        <button id="btnSaveAll" class="btn green">Guardar cambios</button>
-        <div class="muted" style="font-size:13px;">Puedes arrastrar y soltar los hitos para reordenarlos.</div>
+      <!-- inline nuevo documento -->
+      <div style="margin-top:8px;">
+        <input id="newDocName" placeholder="Nombre documento" />
+        <select id="newDocStatus">
+          <option value="pending">Pendiente</option>
+          <option value="approved">Aprobado</option>
+          <option value="rejected">Rechazado</option>
+        </select>
+        <button id="btnAddDocConfirm" class="btn">Agregar documento</button>
       </div>
+    </div>
 
-      <!-- Mensajes -->
-      <div id="configNotice" aria-live="polite" class="notice" style="display:none; margin-top:8px;"></div>
-    </section>
+    <h2>Agregar Hito</h2>
+    <div class="config-box">
+      <label>Nuevo título:</label>
+      <input type="text" id="newHitoTitle">
 
+      <label>Prioridad:</label>
+      <select id="newHitoPriority">
+        <option value="Alta">Alta</option>
+        <option value="Media" selected>Media</option>
+        <option value="Baja">Baja</option>
+      </select>
 
-    <!-- ============================
-         LÓGICA JAVASCRIPT
-    ============================= -->
-    <script src="app.js"></script>
+      <div class="btn-row">
+        <button id="btnAddHito" class="btn blue full">Agregar</button>
+      </div>
+    </div>
+
+    <h2>Opciones del sistema</h2>
+    <div class="config-box">
+      <!-- Exportar JSON (descarga el JSON actual al equipo) -->
+      <button id="btnExport" class="btn blue">Exportar JSON</button>
+
+      <!-- Importar JSON (abre un file input oculto para seleccionar el JSON) -->
+      <button id="btnImport" class="btn">Importar JSON</button>
+      <input id="fileImportInput" type="file" accept="application/json" style="display:none" />
+
+      <button id="btnResetSeed" class="btn red">Restaurar Datos Iniciales</button>
+    </div>
+
+    <!-- Área para mensajes -->
+    <div id="configNotice" class="muted" aria-live="polite" style="display:none; margin-top:8px;"></div>
+
+  </section>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script src="app.js"></script>
+
+  <script>
+    // Botón Menu: navegar al índice principal (ajusta la ruta si tu index está en otro lugar)
+    document.getElementById('btnMenu')?.addEventListener('click', function(){
+      window.location.href = '../index.html';
+    });
+
+    // Si la página fue recargada, restauración de vista queda a app.js (si implementaste persistencia allí)
+    // Aquí solo dejamos el handler del file input en caso app.js no lo haya ligado aún (fallback)
+    (function fallbackImportBinding(){
+      const btnImport = document.getElementById('btnImport');
+      const fileInput = document.getElementById('fileImportInput');
+      if(!btnImport || !fileInput) return;
+      btnImport.addEventListener('click', ()=> fileInput.click());
+      fileInput.addEventListener('change', (e)=>{
+        // Si app.js define plantelesImportFromFileContent, úsala; sino, leer aquí y guardar en localStorage
+        const f = e.target.files && e.target.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if(typeof window.plantelesImportFromFileContent === 'function'){
+              window.plantelesImportFromFileContent(parsed);
+            } else {
+              if(!Array.isArray(parsed)) throw new Error('Formato inválido: se espera un array de hitos');
+              if(!confirm('Importar JSON reemplazará los datos locales en este navegador. ¿Continuar?')) return;
+              localStorage.setItem('planteles_v3', JSON.stringify(parsed));
+              alert('Importación completada. Recarga la página para ver los cambios.');
+            }
+          } catch(err){
+            alert('Error al importar JSON: ' + (err.message || err));
+          }
+        };
+        reader.readAsText(f);
+        fileInput.value = '';
+      });
+    })();
+  </script>
 </body>
 </html>
