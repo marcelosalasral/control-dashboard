@@ -5,7 +5,7 @@ const CONFIG_FILE_PATH = './configuracion_linea_avance.json';
 
 // Seed inicial (datos por defecto, solo como fallback si el archivo no existe)
 const seed = [
-  { id:'h1', title:'Hito 1 — Documentación Base', desc:'Actas, diagnósticos y recopilación inicial.', priority:'Alta', avance:0, // Avance inicial 0, se calcula en loadData
+  { id:'h1', title:'Hito 1 — Documentación Base', desc:'Actas, diagnósticos y recopilación inicial.', priority:'Alta', avance:0, 
     subhitos:[
       { id:'h1s1', title:'Revisión de antecedentes', avance:0, docs:['Acta de comité técnico [aprobado]','Informe diagnóstico [aprobado]','Plano actualizado [pendiente]'] },
       { id:'h1s2', title:'Solicitud de documentos externos', avance:0, docs:['Certificado DOM [pendiente]','Certificado SAG [aprobado]'] }
@@ -44,14 +44,14 @@ function clampAvance(value){
 
 /* Mostrar mensajes breves en UI */
 function showNotice(msg, timeout=2500){
-  const configNotice = document.getElementById('configNotice'); // Aseguramos que se busque aquí
+  const configNotice = document.getElementById('configNotice'); 
   if(!configNotice) { console.log('NOTICE:', msg); return; }
   configNotice.textContent = msg;
   configNotice.style.display = 'block';
   setTimeout(()=>{ configNotice.style.display='none'; configNotice.textContent=''; }, timeout);
 }
 
-/* Util: escapar HTML (pequeña protección al inyectar valores) */
+/* Util: escapar HTML (CORRECCIÓN DE SINTAXIS APLICADA AQUÍ) */
 function escapeHtml(str){
   if(!str) return '';
   return String(str).replace(/[&<>"'`=\/]/g, function(s) {
@@ -62,13 +62,13 @@ function escapeHtml(str){
 }
 
 /* ============================================
-    LÓGICA DE PERSISTENCIA (SIN localStorage)
+    LÓGICA DE PERSISTENCIA
 ============================================ */
 
 /* Carga de Datos (Leyendo el archivo JSON estático) */
 async function loadData(){
     const defaultData = JSON.parse(JSON.stringify(seed));
-    defaultData.forEach(h => recalcHitoAvance(h)); // Calcular avance del seed
+    defaultData.forEach(h => recalcHitoAvance(h)); 
 
     try {
         const response = await fetch(CONFIG_FILE_PATH);
@@ -83,12 +83,10 @@ async function loadData(){
              return defaultData;
         }
         
-        // Si la carga fue exitosa, calculamos y devolvemos los datos
         data.forEach(h => recalcHitoAvance(h)); 
         return data;
     } catch (error) {
         console.error("Error al cargar o parsear la configuración. Usando datos iniciales.", error);
-        // Si hay un error de sintaxis (parseo), usamos el seed
         return defaultData;
     }
 }
@@ -150,10 +148,8 @@ function recalcHitoAvance(h){
         return;
     }
     
-    // 1. Aseguramos que el avance de cada sub-hito esté actualizado
     h.subhitos.forEach(s => autoCalcSubHitoAvance(s));
 
-    // 2. Calculamos el promedio del hito
     const sum = h.subhitos.reduce((acc,s)=> acc + (clampAvance(s.avance)), 0);
     const avg = Math.round(sum / h.subhitos.length);
     h.avance = clampAvance(avg);
@@ -161,14 +157,13 @@ function recalcHitoAvance(h){
 
 
 /* ============================================
-    Referencias DOM globales
+    Referencias DOM globales (Accedidas al inicio para evitar errores de null)
 ============================================ */
 const wrap = document.getElementById('hitosWrap'); 
 const connectorLine = document.getElementById('connectorLine');
 const detalleArea = document.getElementById('detalleArea');
 const detalleInner = document.getElementById('detalleInner');
 const detalleTitulo = document.getElementById('detalleTitulo');
-
 const configWrap = document.getElementById('hitosConfigWrap');
 
 
@@ -178,13 +173,12 @@ const configWrap = document.getElementById('hitosConfigWrap');
 function switchView(v){
   currentView = v;
 
-  document.getElementById('visualView').style.display =
-    v === 'visual' ? 'block' : 'none';
+  const visualView = document.getElementById('visualView');
+  const configView = document.getElementById('configView');
 
-  document.getElementById('configView').style.display =
-    v === 'config' ? 'block' : 'none';
+  if(visualView) visualView.style.display = (v === 'visual' ? 'block' : 'none');
+  if(configView) configView.style.display = (v === 'config' ? 'block' : 'none');
 
-  // tabs visuales
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => {
     if(t.dataset.view === v) t.classList.add('active');
@@ -193,7 +187,7 @@ function switchView(v){
   if(v === 'config'){
     renderHitosConfig();
   } else {
-    detalleArea.style.display = 'none';
+    if(detalleArea) detalleArea.style.display = 'none';
     currentOpen = null;
     createConnectors();
   }
@@ -203,7 +197,7 @@ function switchView(v){
     Render de hitos (Visualización clásica)
 ============================================ */
 function renderHitos(){
-  if (!wrap) return; // Validación importante
+  if (!wrap) return; 
   wrap.querySelectorAll('.hito-card:not(.hito-card.config)').forEach(n=>n.remove());
 
   data.forEach(h => {
@@ -232,7 +226,7 @@ function openHito(id, el){
   document.querySelectorAll('.hito-card').forEach(c=>c.classList.remove('active'));
 
   if(currentOpen === id){
-    detalleArea.style.display='none';
+    if(detalleArea) detalleArea.style.display='none';
     currentOpen=null;
     return;
   }
@@ -240,7 +234,7 @@ function openHito(id, el){
   el.classList.add('active');
   currentOpen = id;
   const h = data.find(x=>x.id===id);
-  if(!h) return;
+  if(!h || !detalleTitulo || !detalleInner || !detalleArea) return;
 
   detalleTitulo.textContent = `Detalle — ${h.title}`;
   detalleInner.innerHTML = '';
@@ -276,16 +270,16 @@ function openHito(id, el){
 
 /* Conectores entre hitos (línea) */
 function createConnectors(){
-  if(!wrap) return;
+  if(!wrap || !connectorLine) return;
   document.querySelectorAll('.connector-dot').forEach(d=>d.remove());
   const cards = Array.from(wrap.querySelectorAll('.hito-card:not(.hito-card.config)'));
   if(cards.length === 0){
-    if(connectorLine) connectorLine.style.display='none';
+    connectorLine.style.display='none';
     return;
   }
 
   const wrapRect = wrap.getBoundingClientRect();
-  if(!cards[0] || !connectorLine) return; 
+  if(!cards[0]) return; 
   const firstRect = cards[0].getBoundingClientRect();
 
   const lineTop = (firstRect.top + firstRect.height/2) - wrapRect.top + wrap.scrollTop;
@@ -308,7 +302,7 @@ function createConnectors(){
     CONFIGURACIÓN VISUAL: render y handlers
 ============================================ */
 function renderHitosConfig(){
-  if (!configWrap) return; // Validación importante
+  if (!configWrap) return; 
   configWrap.innerHTML = '';
 
   data.forEach((h, idx) => {
@@ -317,7 +311,6 @@ function renderHitosConfig(){
     card.dataset.id = h.id;
     card.draggable = true;
 
-    // Generar la lista de documentos (sin clases de color para no afectar la vista)
     let subhitosHtml = '';
     if(h.subhitos && h.subhitos.length){
       h.subhitos.forEach(s=>{
@@ -424,7 +417,7 @@ configWrap?.addEventListener('click', (event) => {
         } else if (target.classList.contains('delete-sub')) {
             if(!confirm(`¿Eliminar sub-hito "${s.title}"?`)) return;
             h.subhitos = h.subhitos.filter(x=>x.id!==s.id);
-            recalcHitoAvance(h); // Recálculo
+            recalcHitoAvance(h); 
             markChangesAsDirty(data);
             renderHitosConfig();
             renderHitos();
@@ -438,7 +431,7 @@ configWrap?.addEventListener('click', (event) => {
             const di = parseInt(target.dataset.doc, 10);
             if(!confirm('¿Eliminar documento?')) return;
             s.docs.splice(di,1);
-            recalcHitoAvance(h); // Recálculo
+            recalcHitoAvance(h); 
             markChangesAsDirty(data);
             renderHitosConfig();
             renderHitos();
@@ -472,12 +465,12 @@ function startEditHito(card, h){
       <button class="btn cancel-hito">Cancelar</button>
     </div>
   `;
-  content.style.display = 'none';
+  if (content) content.style.display = 'none';
   card.appendChild(tpl);
 
   tpl.querySelector('.cancel-hito')?.addEventListener('click', ()=>{
     tpl.remove();
-    content.style.display = '';
+    if (content) content.style.display = '';
     card.classList.remove('editing');
   });
 
@@ -489,7 +482,6 @@ function startEditHito(card, h){
     h.desc = tpl.querySelector('.edit-desc').value.trim();
     h.priority = tpl.querySelector('.edit-priority').value;
     
-    // Avance se recalcula automáticamente
     recalcHitoAvance(h);
 
     markChangesAsDirty(data);
@@ -508,7 +500,7 @@ function openNewSubForm(card, h){
     return;
   }
   const container = card.querySelector('.subs-container') || card.querySelector('.sub-list');
-  if(!container) return; // Validación de contenedor
+  if(!container) return; 
   
   const form = document.createElement('div');
   form.className = 'form-new-sub sub-item';
@@ -532,7 +524,6 @@ function openNewSubForm(card, h){
     if(!title) return alert('Título requerido');
     if(!h.subhitos) h.subhitos = [];
     
-    // Avance se inicializa a 0, luego se recalcula
     const newSub = { id: uid('s'), title, avance: 0, docs: [] };
     h.subhitos.push(newSub);
     recalcHitoAvance(h);
@@ -586,7 +577,7 @@ function openNewDocForm(subItemEl, h, s, card){
     return;
   }
   const docList = subItemEl.querySelector('.doc-list');
-  if(!docList) return; // Validación importante
+  if(!docList) return; 
   
   const form = document.createElement('div');
   form.className = 'form-new-doc';
@@ -713,11 +704,12 @@ document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
   const priority = document.getElementById('addHitoPriority').value;
   if(!title) return alert('Ingresa título para el nuevo hito');
   
-  // Avance inicial 0, docs vacíos
   const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] }; 
   data.push(newH);
   markChangesAsDirty(data);
-  document.getElementById('addHitoTitleInput').value = '';
+  const inputTitle = document.getElementById('addHitoTitleInput');
+  if (inputTitle) inputTitle.value = '';
+  
   renderHitosConfig();
   renderHitos();
   showNotice('Hito agregado. No olvides guardar el JSON.');
@@ -727,23 +719,20 @@ document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
 document.getElementById('btnSaveAll')?.addEventListener('click', ()=>{
   downloadConfig(data);
   renderHitos();
-  // La notificación la pone downloadConfig
 });
 
 /* Reset seed: genera un nuevo archivo basado en el seed */
 document.getElementById('btnResetSeed')?.addEventListener('click',()=>{
   if(!confirm('¿Restaurar datos iniciales? Esto eliminará todos los cambios.')) return;
   
-  // Genera una copia fresca del seed y calcula su avance.
   const seedCopy = JSON.parse(JSON.stringify(seed));
   seedCopy.forEach(h => recalcHitoAvance(h)); 
   data = seedCopy;
   
-  downloadConfig(data); // LLAMA DIRECTAMENTE A DESCARGAR
+  downloadConfig(data); 
   
   renderHitosConfig();
   renderHitos();
-  // La notificación la pone downloadConfig
 });
 
 // Listener para cambiar de vista con los tabs
@@ -759,9 +748,10 @@ window.addEventListener('load', async ()=>{
   // 1. Cargar los datos desde el archivo
   data = await loadData(); 
   
-  // 2. Renderizar vistas
+  // 2. Renderizar vistas y establecer la vista inicial (Visualización)
   renderHitos();
   createConnectors();
+  switchView('visual'); // Aseguramos que inicie en Visualización
 });
 
 window.addEventListener('resize',()=> createConnectors());
