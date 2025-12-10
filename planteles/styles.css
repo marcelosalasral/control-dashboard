@@ -412,3 +412,30 @@ textarea.small-input {
     padding-left: 5px;
     margin-bottom: 2px;
 }
+
+/* =========================================
+   ESTILOS DE DOCUMENTOS POR ESTADO (Solo en Visualización)
+   El selector '.docs' asegura que solo aplica a la vista de Visualización.
+========================================= */
+
+/* Documento Aprobado (Verde) */
+.docs .doc-status-aprobado { 
+    color: #27ae60; /* Verde fuerte */
+}
+
+/* Documento Pendiente (Naranja) */
+.docs .doc-status-pendiente {
+    color: #f39c12; /* Naranja/Amarillo (Advertencia) */
+}
+
+/* Documento Rechazado (Rojo) */
+.docs .doc-status-rechazado {
+    color: #c0392b; /* Rojo oscuro */
+}
+
+/* Opcional: Establecer el estado entre corchetes en un color más suave o en negrita */
+.docs li span {
+    font-weight: 500;
+    font-size: 0.9em;
+    opacity: 0.8; 
+}
