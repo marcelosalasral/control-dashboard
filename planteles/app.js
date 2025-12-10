@@ -1,9 +1,10 @@
 /* ============================================
-    Persistencia y datos iniciales
+    CONSTANTE DE RUTA DE ARCHIVO
 ============================================ */
-const STORAGE_KEY = 'planteles_v3';
+// La aplicación buscará el archivo en la misma carpeta que index.html
+const CONFIG_FILE_PATH = './configuracion_linea_avance.json'; 
 
-// Seed inicial (datos por defecto)
+// Seed inicial (datos por defecto, solo como fallback si el archivo no existe)
 const seed = [
   { id:'h1', title:'Hito 1 — Documentación Base', desc:'Actas, diagnósticos y recopilación inicial.', priority:'Alta', avance:42,
     subhitos:[
@@ -24,23 +25,40 @@ const seed = [
   }
 ];
 
-// Cargar datos (prioriza localStorage)
-function loadData(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(raw) return JSON.parse(raw);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-  return JSON.parse(JSON.stringify(seed)); // Devuelve una copia para no modificar el seed
+/* ============================================
+    Carga de Datos (Leyendo el archivo JSON)
+============================================ */
+async function loadData(){
+  try {
+    const response = await fetch(CONFIG_FILE_PATH);
+    if (!response.ok) {
+        // Si el archivo no existe o hay error de carga, usamos el seed (datos por defecto)
+        console.warn(`Archivo de configuración no encontrado (${CONFIG_FILE_PATH}). Usando datos iniciales.`);
+        return JSON.parse(JSON.stringify(seed));
+    }
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+         console.warn("El archivo de configuración está vacío o es inválido. Usando datos iniciales.");
+         return JSON.parse(JSON.stringify(seed));
+    }
+    return data;
+  } catch (error) {
+    console.error("Error al cargar o parsear la configuración. Usando datos iniciales.", error);
+    return JSON.parse(JSON.stringify(seed));
+  }
 }
 
-// Guardar datos
-function saveData(data){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+// La función saveData ahora genera el archivo de descarga
+function saveData(dataToSave){
+  // Llama a la función de descarga que el usuario debe subir manualmente
+  saveConfigToFile(dataToSave); 
 }
 
 /* ============================================
     Estado en memoria y Utilidades
 ============================================ */
-let data = loadData();
+// Inicialmente, data es null o un array vacío. Se carga en init.
+let data = []; 
 let currentOpen = null;
 let currentView = 'visual';
 
@@ -73,11 +91,10 @@ function escapeHtml(str){
   });
 }
 
-
 /* ============================================
     Referencias DOM globales
 ============================================ */
-const wrap = document.getElementById('hitosWrap'); // visual view
+const wrap = document.getElementById('hitosWrap'); 
 const connectorLine = document.getElementById('connectorLine');
 const detalleArea = document.getElementById('detalleArea');
 const detalleInner = document.getElementById('detalleInner');
@@ -90,6 +107,7 @@ const configNotice = document.getElementById('configNotice');
 /* ============================================
     Cambio de pestañas Visualización / Config
 ============================================ */
+// ... (mantenido el mismo código para switchView) ...
 function switchView(v){
   currentView = v;
 
@@ -108,7 +126,6 @@ function switchView(v){
   if(v === 'config'){
     renderHitosConfig();
   } else {
-    // Es buena práctica ocultar el detalle al cambiar de vista, por si acaso
     detalleArea.style.display = 'none';
     currentOpen = null;
     createConnectors();
@@ -118,6 +135,7 @@ function switchView(v){
 /* ============================================
     Render de hitos (Visualización clásica)
 ============================================ */
+// ... (mantenido el mismo código para renderHitos, openHito, createConnectors) ...
 function renderHitos(){
   wrap.querySelectorAll('.hito-card:not(.hito-card.config)').forEach(n=>n.remove());
 
@@ -182,9 +200,7 @@ function openHito(id, el){
   el.scrollIntoView({behavior:'smooth',inline:'center'});
 }
 
-/* ============================================
-    Conectores entre hitos (línea)
-============================================ */
+/* Conectores entre hitos (línea) */
 function createConnectors(){
   if(!wrap) return;
   document.querySelectorAll('.connector-dot').forEach(d=>d.remove());
@@ -195,7 +211,7 @@ function createConnectors(){
   }
 
   const wrapRect = wrap.getBoundingClientRect();
-  if(!cards[0]) return;
+  if(!cards[0]) return; 
   const firstRect = cards[0].getBoundingClientRect();
 
   const lineTop = (firstRect.top + firstRect.height/2) - wrapRect.top + wrap.scrollTop;
@@ -214,6 +230,7 @@ function createConnectors(){
   });
 }
 
+
 /* ============================================
     UTIL: recalcular avance del hito (promedio simple)
 ============================================ */
@@ -230,6 +247,8 @@ function recalcHitoAvance(h){
 /* ============================================
     CONFIGURACIÓN VISUAL: render y handlers
 ============================================ */
+// ... (mantenido el mismo código para renderHitosConfig, Delegación de eventos y funciones de edición) ...
+
 function renderHitosConfig(){
   configWrap.innerHTML = '';
 
@@ -292,12 +311,9 @@ function renderHitosConfig(){
     `;
 
     configWrap.appendChild(card);
-
-    // Adjuntar drag handlers
     attachDragHandlers(card);
   });
 
-  // Tarjeta para agregar nuevo hito
   const addCard = document.createElement('div');
   addCard.className = 'hito-card config';
   addCard.style.cssText = 'display: flex; align-items: center; justify-content: center; cursor: default;';
@@ -308,7 +324,7 @@ function renderHitosConfig(){
   });
 }
 
-// Delegación de Eventos en Configuración
+
 configWrap.addEventListener('click', (event) => {
     const target = event.target;
     const card = target.closest('.hito-card.config');
@@ -326,10 +342,10 @@ configWrap.addEventListener('click', (event) => {
     } else if (target.classList.contains('delete-hito')) {
         if(!confirm(`¿Eliminar hito "${h.title}"?`)) return;
         data = data.filter(x=>x.id!==h.id);
-        saveData(data);
+        saveData(data); // LLAMADA A SAVEDATA
         renderHitosConfig();
         renderHitos();
-        showNotice('Hito eliminado');
+        showNotice('Hito eliminado. Descarga el nuevo JSON para guardar.');
     }
 
     // Sub-hito & Document Actions
@@ -344,10 +360,10 @@ configWrap.addEventListener('click', (event) => {
             if(!confirm(`¿Eliminar sub-hito "${s.title}"?`)) return;
             h.subhitos = h.subhitos.filter(x=>x.id!==s.id);
             recalcHitoAvance(h);
-            saveData(data);
+            saveData(data); // LLAMADA A SAVEDATA
             renderHitosConfig();
             renderHitos();
-            showNotice('Sub-hito eliminado');
+            showNotice('Sub-hito eliminado. Descarga el nuevo JSON para guardar.');
         } else if (target.classList.contains('add-doc')) {
             openNewDocForm(subItemEl, h, s, card);
         } else if (target.classList.contains('edit-doc')) {
@@ -357,18 +373,19 @@ configWrap.addEventListener('click', (event) => {
             const di = parseInt(target.dataset.doc, 10);
             if(!confirm('¿Eliminar documento?')) return;
             s.docs.splice(di,1);
-            saveData(data);
+            saveData(data); // LLAMADA A SAVEDATA
             renderHitosConfig();
             renderHitos();
-            showNotice('Documento eliminado');
+            showNotice('Documento eliminado. Descarga el nuevo JSON para guardar.');
         }
     }
 });
 
 
-/* Inicia edición inline de un hito */
+/* FUNCIONES DE EDICIÓN INLINE (No se modifican las llamadas internas, solo la llamada final a saveData) */
 function startEditHito(card, h){
-  if(card.querySelector('.editing')) return;
+  // ... (código interno de edición) ...
+  if(card.querySelector('.editing')) return; 
   card.classList.add('editing');
   const content = card.querySelector('.hito-content');
   
@@ -411,17 +428,17 @@ function startEditHito(card, h){
     const av = clampAvance(tpl.querySelector('.edit-avance').value);
     h.avance = av;
 
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     tpl.remove();
     card.classList.remove('editing');
     renderHitosConfig();
     renderHitos();
-    showNotice('Hito actualizado');
+    showNotice('Hito actualizado. Descarga el nuevo JSON para guardar.');
   });
 }
 
-/* Abre un formulario inline para crear nuevo sub-hito dentro de la tarjeta */
 function openNewSubForm(card, h){
+  // ... (código interno de edición) ...
   if(card.querySelector('.form-new-sub')) {
     card.querySelector('.form-new-sub input')?.focus();
     return;
@@ -456,15 +473,15 @@ function openNewSubForm(card, h){
     const newSub = { id: uid('s'), title, avance: av, docs: [] };
     h.subhitos.push(newSub);
     recalcHitoAvance(h);
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
-    showNotice('Sub-hito creado');
+    showNotice('Sub-hito creado. Descarga el nuevo JSON para guardar.');
   });
 }
 
-/* Inicia edición inline de un sub-hito */
 function startEditSub(subItemEl, h, s, card){
+  // ... (código interno de edición) ...
   if(subItemEl.querySelector('.editing-sub')) return;
   const backupHtml = subItemEl.innerHTML;
   subItemEl.classList.add('editing-sub');
@@ -496,15 +513,15 @@ function startEditSub(subItemEl, h, s, card){
     s.avance = av;
     
     recalcHitoAvance(h);
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
-    showNotice('Sub-hito actualizado');
+    showNotice('Sub-hito actualizado. Descarga el nuevo JSON para guardar.');
   });
 }
 
-/* Abre formulario inline para agregar documento a un sub-hito */
 function openNewDocForm(subItemEl, h, s, card){
+  // ... (código interno de edición) ...
   if(subItemEl.querySelector('.form-new-doc')) {
     subItemEl.querySelector('.form-new-doc input')?.focus();
     return;
@@ -535,15 +552,15 @@ function openNewDocForm(subItemEl, h, s, card){
     if(!name) return alert('Nombre requerido');
     if(!s.docs) s.docs = [];
     s.docs.push(`${name} [${status}]`);
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
-    showNotice('Documento agregado');
+    showNotice('Documento agregado. Descarga el nuevo JSON para guardar.');
   });
 }
 
-/* Inicia edición inline de un documento identificado por índice di */
 function startEditDoc(subItemEl, h, s, di, card){
+  // ... (código interno de edición) ...
   const docNode = subItemEl.querySelector(`[data-doc="${di}"]`);
   if(!docNode) return;
   
@@ -578,17 +595,15 @@ function startEditDoc(subItemEl, h, s, di, card){
     const newStatus = docNode.querySelector('.edit-doc-status').value;
     if(!newName) return alert('Nombre requerido');
     s.docs[di] = `${newName} [${newStatus}]`;
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
-    showNotice('Documento actualizado');
+    showNotice('Documento actualizado. Descarga el nuevo JSON para guardar.');
   });
 }
 
 
-/* ============================================
-    Drag & Drop: reordenar hitos
-============================================ */
+/* Drag & Drop: reordenar hitos */
 let dragSrcId = null;
 function attachDragHandlers(card){
   card.addEventListener('dragstart', (e)=>{
@@ -616,80 +631,42 @@ function attachDragHandlers(card){
     const [moved] = data.splice(srcIndex,1);
     data.splice(targetIndex,0,moved);
     
-    saveData(data);
+    saveData(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
-    showNotice('Orden actualizado');
+    showNotice('Orden actualizado. Descarga el nuevo JSON para guardar.');
   });
 }
 
-// ============================================
-// UTILIDADES DE ARCHIVO (Importar/Exportar)
-// ============================================
 
-function exportData() {
-    // 1. Convertir los datos a texto JSON
-    const dataString = JSON.stringify(data, null, 2);
-    
-    // 2. Crear un Blob (archivo binario)
+/* ============================================
+    UTILIDADES DE DESCARGA DE ARCHIVO
+============================================ */
+// Esta función ahora se usa para guardar la configuración, forzando la descarga.
+function saveConfigToFile(dataToSave) {
+    const dataString = JSON.stringify(dataToSave, null, 2);
     const blob = new Blob([dataString], { type: 'application/json' });
-    
-    // 3. Crear una URL temporal para el Blob
     const url = URL.createObjectURL(blob);
     
-    // 4. Crear un enlace de descarga (elemento temporal <a>)
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'configuracion_linea_avance.json';
+    // IMPORTANTE: el archivo se descarga con el nombre que la app espera leer
+    a.download = 'configuracion_linea_avance.json'; 
     
-    // 5. Simular el clic para iniciar la descarga.
-    // Usamos setTimeout(0) para asegurar que el elemento <a> se haya procesado 
-    // en el DOM, lo que es crucial para evitar bloqueos del navegador.
     a.click();
     
-    // 6. Limpiar: Se recomienda un pequeño retraso para asegurar que la descarga 
-    // se inició antes de revocar la URL y mostrar el mensaje.
     setTimeout(() => {
         URL.revokeObjectURL(url);
-        showNotice('Configuración exportada exitosamente.');
     }, 100); 
-}
-
-async function importData(jsonFile) {
-    if (!jsonFile) return;
-
-    try {
-        const text = await jsonFile.text();
-        const importedData = JSON.parse(text);
-
-        // Validar la estructura básica de los datos
-        if (!Array.isArray(importedData) || importedData.length === 0 || !importedData[0].id) {
-            alert('Error: El archivo JSON no parece ser un formato de configuración válido. Estructura incorrecta.');
-            return;
-        }
-
-        // 1. Reemplazar datos
-        data = importedData;
-        
-        // 2. Guardar en localStorage para persistencia
-        saveData(data);
-        
-        // 3. Re-renderizar ambas vistas
-        renderHitosConfig();
-        renderHitos();
-        
-        showNotice('Configuración importada y aplicada con éxito.', 4000);
-
-    } catch (e) {
-        console.error('Error al importar el archivo:', e);
-        alert('Error al procesar el archivo. Asegúrate de que sea un JSON válido.');
-    }
+    
+    // NO mostramos el mensaje aquí, se hace desde la función que la llama.
 }
 
 
 /* ============================================
     Acciones globales de la vista configuracion
 ============================================ */
+
 document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
   const title = document.getElementById('addHitoTitleInput').value.trim();
   const priority = document.getElementById('addHitoPriority').value;
@@ -697,52 +674,49 @@ document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
   
   const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] };
   data.push(newH);
-  saveData(data);
+  saveData(data); // LLAMADA A SAVEDATA
   document.getElementById('addHitoTitleInput').value = '';
   renderHitosConfig();
   renderHitos();
-  showNotice('Hito agregado');
+  showNotice('Hito agregado. Descarga el nuevo JSON para guardar.');
 });
 
+// El botón de Guardar ahora hace lo mismo que saveData: fuerza la descarga
 document.getElementById('btnSaveAll')?.addEventListener('click', ()=>{
   saveData(data);
   renderHitos();
-  showNotice('Cambios guardados');
+  showNotice('Archivo JSON de configuración generado. Súbelo a GitHub para aplicar los cambios en línea.');
 });
 
-/* Reset seed */
+/* Reset seed: genera un nuevo archivo basado en el seed */
 document.getElementById('btnResetSeed')?.addEventListener('click',()=>{
   if(!confirm('¿Restaurar datos iniciales? Esto eliminará todos los cambios.')) return;
+  
   data = JSON.parse(JSON.stringify(seed)); // Deep copy del seed
-  saveData(data);
+  saveData(data); // LLAMADA A SAVEDATA (descarga el archivo con el seed)
+  
   renderHitosConfig();
   renderHitos();
-  showNotice('Datos restaurados');
+  showNotice('Datos restaurados. Descarga el nuevo JSON y súbelo para aplicar el reset.');
 });
 
 
-// LISTENERS DE IMPORTACIÓN/EXPORTACIÓN
-document.getElementById('btnExportData')?.addEventListener('click', exportData);
-
-// Listener para Importar (maneja el selector de archivo oculto)
-document.getElementById('fileInput')?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        if(confirm(`¿Estás seguro de que quieres importar "${file.name}"? Esto reemplazará la configuración actual.`)) {
-             importData(file);
-        }
-    }
-});
+// ELIMINAMOS EL LISTENER DE IMPORTACIÓN (fileInput)
+// document.getElementById('fileInput')?.addEventListener...
 
 
 /* ============================================
     Inicialización
 ============================================ */
-window.addEventListener('load',()=>{
+// La inicialización ahora es asíncrona
+window.addEventListener('load', async ()=>{
+  // 1. Cargar los datos desde el archivo
+  data = await loadData(); 
+  
+  // 2. Renderizar vistas
   renderHitos();
   createConnectors();
 });
 
 window.addEventListener('resize',()=> createConnectors());
-// Re-calcular conectores si hay scroll horizontal en el contenedor de hitos
 wrap.addEventListener('scroll',()=> window.requestAnimationFrame(createConnectors()));
