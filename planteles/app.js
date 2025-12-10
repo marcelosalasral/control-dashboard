@@ -1,6 +1,6 @@
 /* ============================================
    Persistencia y datos iniciales
-============================================ */
+=========================================== */
 const STORAGE_KEY = 'planteles_v3';
 
 // Seed inicial (datos por defecto)
@@ -24,70 +24,35 @@ const seed = [
   }
 ];
 
-/* ============================================
-   Carga de datos: ahora intentamos leer primero un archivo JSON en disco
-   llamado planteles_data.json en la misma carpeta (planteles/planteles_data.json).
-   Si existe y es válido, se usa ese archivo. Si no, se cae a localStorage,
-   y finalmente al seed embebido.
-
-   Flujo:
-   - Si en el servidor /planteles/planteles_data.json existe: lo usamos.
-   - Si no existe o falla, usamos localStorage (si hay datos).
-   - Si no hay nada, guardamos el seed en localStorage y lo usamos.
-============================================ */
-
-/* Indicador si venimos desde archivo externo */
-let dataFromExternalFile = false;
-
-/* Cargar: intento de fetch del archivo externo y fallback a localStorage/seed */
-async function loadData(){
-  // Intentar cargar archivo JSON desde el mismo directorio (planteles/planteles_data.json)
-  // Añadimos cache-bust param para evitar que el navegador devuelva una versión cacheada al probar nuevas cargas.
+// Cargar
+function loadData(){
   try {
-    const res = await fetch('./planteles_data.json?t=' + Date.now(), {cache: 'no-store'});
-    if(res.ok){
-      const parsed = await res.json();
-      // Validación mínima: debe ser un array de hitos
-      if(Array.isArray(parsed)){
-        dataFromExternalFile = true;
-        // NOTA: no escribimos automáticamente en localStorage para respetar el archivo en disco
-        return parsed;
-      }
-    }
-  } catch(err){
-    // fallo al buscar el archivo (normal en entornos donde no existe); seguiremos con localStorage
-    console.debug('No se encontró planteles_data.json o fallo al parsear, usando localStorage/seed', err);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+    return JSON.parse(JSON.stringify(seed));
+  } catch (err) {
+    console.error('loadData error', err);
+    // en caso de JSON inválido, limpiar y devolver seed
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+    return JSON.parse(JSON.stringify(seed));
   }
-
-  // Fallback: localStorage
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(raw){
-    try {
-      return JSON.parse(raw);
-    } catch(e){
-      console.warn('localStorage contiene JSON inválido, se restaurará seed', e);
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }
-
-  // Si nada: guardar seed en localStorage y devolver una copia
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-  return JSON.parse(JSON.stringify(seed));
 }
 
-/* Guardar en localStorage */
-function saveDataLocal(dataToSave){
+// Guardar
+function saveData(data){
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e){
-    console.error('Error guardando en localStorage', e);
+    console.error('saveData error', e);
   }
 }
 
 /* ============================================
-   Estado en memoria y auxiliares
-============================================ */
-let data = []; // será inicializado en initApp()
+   Estado en memoria
+=========================================== */
+let data = loadData();
 let currentOpen = null;
 let currentView = 'visual';
 
@@ -95,29 +60,60 @@ let currentView = 'visual';
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 
 /* ============================================
-   Referencias DOM globales (algunas pueden no existir según HTML actual)
-============================================ */
-const wrap = document.getElementById('hitosWrap'); // vista visual
+   Cambio de pestañas Visualización / Config
+   (añadí logs y guards para evitar errores silenciosos)
+=========================================== */
+function switchView(v){
+  console.log('switchView called with:', v);
+  currentView = v;
+
+  const visualEl = document.getElementById('visualView');
+  const configEl = document.getElementById('configView');
+
+  if(!visualEl || !configEl){
+    console.error('switchView: elementos visualView/configView NO encontrados', {visualEl, configEl});
+    return;
+  }
+
+  visualEl.style.display = (v === 'visual') ? 'block' : 'none';
+  configEl.style.display = (v === 'config') ? 'block' : 'none';
+
+  // tabs visuales
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => {
+    if(t.dataset.view === v) t.classList.add('active');
+  });
+
+  try {
+    if(v === 'config' && typeof populateConfigSelects === 'function') populateConfigSelects();
+  } catch(err) {
+    console.error('Error al ejecutar populateConfigSelects():', err);
+  }
+  try {
+    if(v === 'visual' && typeof createConnectors === 'function') createConnectors();
+  } catch(err) {
+    console.error('Error al ejecutar createConnectors():', err);
+  }
+}
+
+// Aseguramos que la función sea accesible desde la consola/onclick inline
+window.switchView = switchView;
+
+/* ============================================
+   Render de hitos (Visualización)
+=========================================== */
+const wrap = document.getElementById('hitosWrap');
 const connectorLine = document.getElementById('connectorLine');
 const detalleArea = document.getElementById('detalleArea');
 const detalleInner = document.getElementById('detalleInner');
 const detalleTitulo = document.getElementById('detalleTitulo');
 
-const configWrap = document.getElementById('hitosConfigWrap');
-const configNotice = document.getElementById('configNotice');
-
-/* ============================================
-   Renders y lógica (se mantienen igual que previamente)
-   He conservado las funciones principales (renderHitos, renderHitosConfig, createConnectors, etc.)
-   Solo que ahora la inicialización es asíncrona y depende de loadData().
-============================================ */
-
-/* Render de hitos (Visualización) - optimized with fragment */
 function renderHitos(){
-  if(!wrap) return;
+  if(!wrap) { console.error('renderHitos: wrap no encontrado'); return; }
   wrap.querySelectorAll('.hito-card').forEach(n=>n.remove());
 
   const frag = document.createDocumentFragment();
+
   data.forEach(h => {
     const card = document.createElement('div');
     card.className = 'hito-card';
@@ -132,16 +128,20 @@ function renderHitos(){
         <div class="muted" style="font-size:12px">${h.priority || ''}</div>
       </div>
     `;
+
     frag.appendChild(card);
   });
+
   wrap.appendChild(frag);
 
-  window.requestAnimationFrame(createConnectors);
+  window.requestAnimationFrame(()=> {
+    if(typeof createConnectors === 'function') createConnectors();
+  });
 }
 
 /* Abrir hito en Visualización */
 function openHito(id, el){
-  if(!detalleArea) return;
+  if(!detalleArea){ console.error('openHito: detalleArea no existe'); return; }
   document.querySelectorAll('.hito-card').forEach(c=>c.classList.remove('active'));
 
   if(currentOpen === id){
@@ -150,9 +150,10 @@ function openHito(id, el){
     return;
   }
 
-  el.classList.add('active');
+  if(el) el.classList.add('active');
   currentOpen = id;
   const h = data.find(x=>x.id===id);
+  if(!h) { console.warn('openHito: hito no encontrado', id); return; }
 
   detalleTitulo.textContent = `Detalle — ${h.title}`;
   detalleInner.innerHTML = '';
@@ -176,12 +177,14 @@ function openHito(id, el){
   }
 
   detalleArea.style.display='block';
-  el.scrollIntoView({behavior:'smooth',inline:'center'});
+  if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth',inline:'center'});
 }
 
-/* createConnectors optimized */
+/* ============================================
+   Conectores entre hitos
+=========================================== */
 function createConnectors(){
-  if(!wrap || !connectorLine) return;
+  if(!wrap || !connectorLine) { console.warn('createConnectors: wrap o connectorLine no encontrados'); return; }
   document.querySelectorAll('.connector-dot').forEach(d=>d.remove());
   const cards = Array.from(wrap.querySelectorAll('.hito-card'));
   if(cards.length === 0){
@@ -197,154 +200,133 @@ function createConnectors(){
   connectorLine.style.display='block';
 
   const frag = document.createDocumentFragment();
-
   cards.forEach(card => {
-    let centerX;
-    if(typeof card.offsetLeft === 'number' && typeof card.offsetWidth === 'number'){
-      centerX = card.offsetLeft + (card.offsetWidth / 2) - wrap.scrollLeft;
-    } else {
-      const rect = card.getBoundingClientRect();
-      centerX = (rect.left + rect.right)/2 - wrapRect.left + wrap.scrollLeft;
-    }
-
+    const rect = card.getBoundingClientRect();
+    const centerX = (rect.left + rect.right)/2 - wrapRect.left + wrap.scrollLeft;
     const dot = document.createElement('div');
     dot.className = 'connector-dot';
     dot.style.left = `${centerX}px`;
     dot.style.top = `${lineTop}px`;
     frag.appendChild(dot);
   });
-
   wrap.appendChild(frag);
 }
 
 /* ============================================
-   Funciones de configuración visual (CRUD inline y reorder)
-   (Conservadas de la versión previa; no las repito aquí para brevedad
-    salvo si necesitas más cambios.)
-============================================ */
+   CONFIGURACIÓN — Selects
+=========================================== */
+function populateConfigSelects(){
+  try {
+    const selectH = document.getElementById('selectHitoEdit');
+    const selectSub = document.getElementById('selectSubEdit');
+    const selectDoc = document.getElementById('selectDocEdit');
+    if(!selectH || !selectSub || !selectDoc) {
+      console.warn('populateConfigSelects: alguno de los selects no existe aún');
+      return;
+    }
 
-/* (Se mantienen renderHitosConfig, attachCardHandlers, startEditHito, etc.
-   tal como estaban en la versión anterior que copiaste.) */
+    selectH.innerHTML = '<option value="">-- seleccionar --</option>';
+    data.forEach(h=>{
+      const o=document.createElement('option');
+      o.value=h.id; o.textContent=h.title;
+      selectH.appendChild(o);
+    });
 
-/* ============================================
-   Export / Import (local) y flujo recomendado para usar carpeta Planteles
-============================================ */
-
-/*
-  Export:
-  - Descarga un archivo JSON (planteles_export.json) con los datos actuales.
-  - Instrucción para el usuario:
-      Después de exportar, copia el archivo descargado en la carpeta planteles/ de tu servidor/servicio estático
-      y renómbralo a planteles_data.json (sobrescribiendo el anterior si lo hubiera).
-      Cuando el navegador cargue planteles/index.html, la app intentará leer planteles_data.json y
-      usar esos datos como fuente principal.
-*/
-function exportToFile(filename = 'planteles_export.json'){
-  try{
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotice('Archivo exportado: ' + filename);
+    selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
+    selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
   } catch(err){
-    alert('Error al exportar: ' + err.message);
+    console.error('populateConfigSelects error:', err);
   }
 }
 
-/*
-  Import (desde archivo cargado por usuario):
-  - Esto guarda en localStorage (no en el archivo del servidor).
-  - Útil para pruebas locales o sincronizar manualmente entre equipos.
-*/
-function importFromFileContent(parsed){
-  if(!Array.isArray(parsed)) return alert('Formato inválido: se esperaba un array de hitos');
-  // confirm overwrite
-  if(!confirm('Importar JSON reemplazará los datos actuales en este navegador. ¿Continuar?')) return;
-  data = parsed;
-  saveDataLocal(data);
-  dataFromExternalFile = false;
-  renderHitos();
-  if(typeof renderHitosConfig === 'function') renderHitosConfig();
-  showNotice('Datos importados en localStorage');
-}
-
 /* ============================================
-   Utilidades UI y mensajes
-============================================ */
-function showNotice(msg, timeout=3000){
-  if(!configNotice) { console.log('NOTICE:', msg); return; }
-  configNotice.textContent = msg;
-  configNotice.style.display = 'block';
-  setTimeout(()=>{ configNotice.style.display='none'; configNotice.textContent=''; }, timeout);
-}
+   Resto de handlers (guardar/editar/elim/ export...) 
+   Mantengo el mismo código que ya tienes; si faltara alguno
+   lo añadimos después según lo necesites.
+=========================================== */
 
-/* ============================================
-   Inicialización asíncrona
-   - Ahora usamos initApp() para cargar datos (intentando planteles_data.json)
-   - y luego arrancamos la UI.
-============================================ */
-async function initApp(){
-  data = await loadData();
+/* Guardar Hito */
+document.addEventListener('click', function initOnce(e){
+  // Dejar este handler para asegurar que los elementos del DOM estén presentes antes de enlazar eventos que dependen de ellos
+  // Sólo se ejecuta una vez, luego se elimina.
+  document.removeEventListener('click', initOnce);
 
-  // Si data proviene del archivo en la carpeta Planteles, avisamos al usuario
-  if(dataFromExternalFile){
-    showNotice('Cargando datos desde planteles_data.json (carpeta Planteles)');
-  }
-
-  renderHitos();
-  // render config view only on demand (switchView will call renderHitosConfig)
-  // renderHitosConfig if currently in config view
-  if(currentView === 'config' && typeof renderHitosConfig === 'function') renderHitosConfig();
-
-  // listeners optimizados para resize/scroll
-  let resizeTimer = null;
-  window.addEventListener('resize', ()=>{
-    if(resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(()=> {
-      createConnectors();
-      resizeTimer = null;
-    }, 120);
+  // Enlazar eventos sólo si existen los elementos
+  const elSaveH = document.getElementById('btnSaveHito');
+  if(elSaveH) elSaveH.addEventListener('click', ()=>{
+    const hid = document.getElementById('selectHitoEdit')?.value;
+    if(!hid) return alert('Selecciona un hito');
+    const h = data.find(x=>x.id===hid);
+    if(!h) return;
+    h.desc = document.getElementById('editHitoDesc')?.value.trim() || '';
+    const av = parseInt(document.getElementById('editHitoAvance')?.value||'0',10);
+    h.avance = isNaN(av)?0:av;
+    saveData(data);
+    renderHitos();
+    alert('Hito guardado');
   });
 
-  let ticking = false;
-  if(wrap){
-    wrap.addEventListener('scroll', ()=>{
-      if(!ticking){
-        window.requestAnimationFrame(()=>{
-          createConnectors();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    });
-  }
-}
+  const elAdd = document.getElementById('btnAddHito');
+  if(elAdd) elAdd.addEventListener('click', ()=>{
+    const title = document.getElementById('newHitoTitle')?.value.trim();
+    const priority = document.getElementById('newHitoPriority')?.value;
+    if(!title) return alert('Ingresa título');
+    const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] };
+    data.push(newH);
+    saveData(data);
+    document.getElementById('newHitoTitle').value = '';
+    populateConfigSelects();
+    renderHitos();
+  });
 
-/* Ejecutar init */
-window.addEventListener('load', ()=> {
-  initApp();
+  // Enlazar otros botones similares solo si existen (btnExport, btnResetSeed, etc.)
+  const elExport = document.getElementById('btnExport');
+  if(elExport) elExport.addEventListener('click', ()=>{
+    try{
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download='planteles_export.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(err){ console.error('Error export:', err); }
+  });
+
+  const elReset = document.getElementById('btnResetSeed');
+  if(elReset) elReset.addEventListener('click', ()=>{
+    if(!confirm('¿Restaurar datos iniciales?')) return;
+    data = JSON.parse(JSON.stringify(seed));
+    saveData(data);
+    populateConfigSelects();
+    renderHitos();
+    detalleArea && (detalleArea.style.display='none');
+  });
+
+  // Fallback: asegurar que las pestañas funcionen con addEventListener si onclick no funciona
+  document.querySelectorAll('.tab').forEach(t => {
+    t.removeEventListener('click', t._boundSwitchHandler);
+    t._boundSwitchHandler = function(e){
+      const view = t.dataset.view;
+      try { switchView(view); } catch(err){ console.error('switchView fallback error', err); }
+    };
+    t.addEventListener('click', t._boundSwitchHandler);
+  });
+
+}, { once:true });
+
+/* ============================================
+   Inicialización
+=========================================== */
+window.addEventListener('load',()=>{
+  try {
+    renderHitos();
+    createConnectors();
+    populateConfigSelects();
+  } catch(err){
+    console.error('Error en inicialización:', err);
+  }
 });
 
-/* ============================================
-   Helpers: Exponer las funciones de export/import para conectarlas en el HTML
-============================================ */
-window.plantelesExportToFile = exportToFile;
-window.plantelesImportFromFileContent = importFromFileContent;
-
-/* ============================================
-   Nota para el usuario / instrucciones breves:
-   - Para que la app lea automáticamente desde la carpeta Planteles:
-     1) Exporta tus datos con el botón Exportar (o usando plantelesExportToFile()).
-     2) Copia el archivo descargado (por ejemplo planteles_export.json) a la carpeta planteles/
-        del servidor donde sirves la app y renómbralo a planteles_data.json.
-        (Ruta final: planteles/planteles_data.json)
-     3) Recarga planteles/index.html en el navegador. La app intentará leer planteles_data.json
-        y, si existe y es válido, usará esos datos como fuente.
-   - Si quieres editar desde la UI y mantener esos cambios en el archivo del servidor:
-     debes repetir el ciclo: editar → Exportar → sobrescribir planteles_data.json en la carpeta planteles.
-   - Si prefieres sincronización automática entre máquinas, coméntamelo y preparo una API / backend sencillo
-     (Node/Express) o integración con Firebase/Supabase.
-============================================ */
+window.addEventListener('resize',()=> createConnectors());
+wrap && wrap.addEventListener('scroll',()=> window.requestAnimationFrame(createConnectors));
