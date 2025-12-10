@@ -1,44 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Planteles — Línea de Avance</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Planteles — Línea de Avance</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      /* Pequeños estilos inline para mejorar la vista de configuración visual */
+      .config-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+      #hitosConfigWrap { display:flex; gap:12px; align-items:flex-start; padding:8px; overflow:auto; border:1px dashed #ddd; min-height:120px; }
+      .hito-card.config { width:260px; cursor:grab; position:relative; padding:10px; border:1px solid #ccc; background:#fff; border-radius:6px; }
+      .card-meta { margin-top:8px; font-size:13px; color:#666; }
+      .card-actions { display:flex; gap:6px; margin-top:8px; }
+      .sub-list { margin-top:8px; padding-left:10px; }
+      .sub-item { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:4px 0; }
+      .doc-list { margin-top:6px; padding-left:14px; font-size:13px; color:#444; }
+      .drag-handle { position:absolute; top:6px; right:6px; cursor:grab; font-size:12px; opacity:.6; }
+      .editing { outline:2px dashed #38f3; }
+      .small-input { width: 100%; box-sizing:border-box; }
+    </style>
 </head>
 <body>
-  <header class="topbar" style="display:flex;align-items:center;gap:12px;">
-    <h1 style="margin:0">Dashboard Planteles — Línea de Avance</h1>
-    <div class="tabs" style="margin-left:12px;">
-      <button class="tab active" data-view="visual" onclick="switchView('visual')">Visualización</button>
-      <button class="tab" data-view="config" onclick="switchView('config')">Configuración</button>
-    </div>
-    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-      <button id="btnMenu" class="btn">Menu</button>
-      <!-- Export ya existente -->
-      <button id="btnExport" class="btn">Exportar JSON</button>
-      <!-- Nuevo: Importar JSON -->
-      <button id="btnImport" class="btn">Importar JSON</button>
-      <!-- input file oculto para importar -->
-      <input id="fileImportInput" type="file" accept="application/json" style="display:none" />
-    </div>
-  </header>
 
-  <!-- Resto de la página (visual/config) -->
-  <section id="visualView">
-    <div id="hitosWrap" class="hitos-wrap">
-      <div id="connectorLine" class="connector-line"></div>
-    </div>
-    <div id="detalleArea" class="detalle-area">
-      <h2 id="detalleTitulo"></h2>
-      <div id="detalleInner"></div>
-    </div>
-  </section>
+    <!-- ============================
+         BARRA SUPERIOR
+    ============================= -->
+    <header class="topbar" style="display:flex;align-items:center;gap:12px;">
+        <h1 style="margin:0">Dashboard Planteles — Línea de Avance</h1>
 
-  <section id="configView" style="display:none;">
-    <!-- (Tu UI de configuración aquí; no modificado en este snippet) -->
-  </section>
+        <div class="tabs" style="margin-left:12px;">
+            <button class="tab active" data-view="visual" onclick="switchView('visual')">Visualización</button>
+            <button class="tab" data-view="config" onclick="switchView('config')">Configuración</button>
+        </div>
 
-  <script src="app.js"></script>
+        <!-- Botón Menu con la misma clase .btn que los demás botones -->
+        <div style="margin-left:auto;">
+          <!-- Se usa un <button> para mantener el mismo estilo visual; ajusta la ruta si es necesario -->
+          <button id="btnMenu" class="btn" title="Ir al menú principal">Menu</button>
+        </div>
+    </header>
+
+
+    <!-- ============================
+         VISUALIZACIÓN
+    ============================= -->
+    <section id="visualView">
+
+        <div id="hitosWrap" class="hitos-wrap">
+            <!-- Línea horizontal -->
+            <div id="connectorLine" class="connector-line"></div>
+        </div>
+
+        <!-- Detalle del hito -->
+        <div id="detalleArea" class="detalle-area">
+            <h2 id="detalleTitulo"></h2>
+            <div id="detalleInner"></div>
+        </div>
+
+    </section>
+
+
+    <!-- ============================
+         CONFIGURACIÓN (vista visual e interactiva)
+    ============================= -->
+    <section id="configView" style="display:none;">
+
+      <div class="config-toolbar">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label><strong>Modo configuración visual</strong></label>
+        </div>
+
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <input id="addHitoTitleInput" placeholder="Título nuevo hito" />
+          <select id="addHitoPriority">
+            <option value="Alta">Alta</option>
+            <option value="Media" selected>Media</option>
+            <option value="Baja">Baja</option>
+          </select>
+          <button id="btnAddHitoVisual" class="btn blue">Agregar Hito</button>
+          <button id="btnResetSeed" class="btn red">Restaurar datos iniciales</button>
+        </div>
+      </div>
+
+      <div id="hitosConfigWrap" aria-label="Hitos configurables">
+        <!-- Aquí se renderizan las tarjetas editables de hitos -->
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        <button id="btnSaveAll" class="btn green">Guardar cambios</button>
+        <div class="muted" style="font-size:13px;">Puedes arrastrar y soltar los hitos para reordenarlos.</div>
+      </div>
+
+      <!-- Mensajes -->
+      <div id="configNotice" aria-live="polite" class="notice" style="display:none; margin-top:8px;"></div>
+    </section>
+
+
+    <!-- ============================
+         LÓGICA JAVASCRIPT
+    ============================= -->
+    <script src="app.js"></script>
+
+    <script>
+      // Navegación desde el botón Menu (ajusta la ruta si tu index principal está en otra ubicación)
+      document.getElementById('btnMenu')?.addEventListener('click', function(){
+        // Navegar directamente al índice principal
+        window.location.href = '../index.html';
+      });
+    </script>
 </body>
 </html>
