@@ -305,9 +305,8 @@ function renderHitosConfig(){
 
 // ===========================================
 // Delegación de Eventos en Configuración
+// (Se deja esta parte intacta, maneja la lógica de edición inline)
 // ===========================================
-
-// Listener para el contenedor principal de la configuración
 configWrap.addEventListener('click', (event) => {
     const target = event.target;
     const card = target.closest('.hito-card.config');
@@ -365,9 +364,9 @@ configWrap.addEventListener('click', (event) => {
 });
 
 
-/* Inicia edición inline de un hito */
+/* Inicia edición inline de un hito (resto de funciones de edición...) */
 function startEditHito(card, h){
-  if(card.querySelector('.editing')) return; // evitar doble edición
+  if(card.querySelector('.editing')) return; 
   card.classList.add('editing');
   const content = card.querySelector('.hito-content');
   
@@ -390,7 +389,6 @@ function startEditHito(card, h){
       <button class="btn cancel-hito">Cancelar</button>
     </div>
   `;
-  // Reemplazar nodos visibles temporalmente
   content.style.display = 'none';
   card.appendChild(tpl);
 
@@ -422,7 +420,6 @@ function startEditHito(card, h){
 
 /* Abre un formulario inline para crear nuevo sub-hito dentro de la tarjeta */
 function openNewSubForm(card, h){
-  // Si ya existe un form, enfócalo
   if(card.querySelector('.form-new-sub')) {
     card.querySelector('.form-new-sub input')?.focus();
     return;
@@ -466,7 +463,6 @@ function openNewSubForm(card, h){
 
 /* Inicia edición inline de un sub-hito */
 function startEditSub(subItemEl, h, s, card){
-  // evitar montar varios editores
   if(subItemEl.querySelector('.editing-sub')) return;
   const backupHtml = subItemEl.innerHTML;
   subItemEl.classList.add('editing-sub');
@@ -487,7 +483,6 @@ function startEditSub(subItemEl, h, s, card){
   
   subItemEl.querySelector('.cancel-sub').addEventListener('click', ()=>{
     subItemEl.classList.remove('editing-sub');
-    // Restaurar HTML (y perder listeners, por lo que re-renderizar es más simple)
     renderHitosConfig(); 
   });
   subItemEl.querySelector('.save-sub').addEventListener('click', ()=>{
@@ -547,17 +542,14 @@ function openNewDocForm(subItemEl, h, s, card){
 
 /* Inicia edición inline de un documento identificado por índice di */
 function startEditDoc(subItemEl, h, s, di, card){
-  // buscar el nodo del doc actual
   const docNode = subItemEl.querySelector(`[data-doc="${di}"]`);
   if(!docNode) return;
   
-  // parse existing text
   const text = s.docs[di] || '';
   const match = text.match(/^(.*)\s\[(.*)\]$/);
   const name = match ? match[1] : text;
   const status = match ? match[2] : 'pending';
 
-  // reemplazar por formulario inline
   const backup = docNode.innerHTML;
   docNode.innerHTML = `
     <div class="editing-doc">
@@ -577,7 +569,7 @@ function startEditDoc(subItemEl, h, s, di, card){
 
   docNode.querySelector('.cancel-doc').addEventListener('click', ()=>{
     docNode.innerHTML = backup;
-    renderHitosConfig(); // Re-render para restaurar listeners en la tarjeta
+    renderHitosConfig(); 
   });
   docNode.querySelector('.save-doc').addEventListener('click', ()=>{
     const newName = docNode.querySelector('.edit-doc-name').value.trim();
@@ -615,7 +607,6 @@ function attachDragHandlers(card){
     const targetId = card.dataset.id;
     if(!dragSrcId || dragSrcId === targetId) return;
     
-    // reorder data: move element with id dragSrcId to position of targetId
     const srcIndex = data.findIndex(x=>x.id===dragSrcId);
     const targetIndex = data.findIndex(x=>x.id===targetId);
     if(srcIndex < 0 || targetIndex < 0) return;
@@ -629,6 +620,68 @@ function attachDragHandlers(card){
     showNotice('Orden actualizado');
   });
 }
+
+// ============================================
+// UTILIDADES DE ARCHIVO (Importar/Exportar) <-- NUEVA SECCIÓN
+// ============================================
+
+function exportData() {
+    // 1. Convertir los datos a texto JSON
+    const dataString = JSON.stringify(data, null, 2);
+    
+    // 2. Crear un Blob
+    const blob = new Blob([dataString], { type: 'application/json' });
+    
+    // 3. Crear una URL para el Blob
+    const url = URL.createObjectURL(blob);
+    
+    // 4. Crear un enlace de descarga (temporal)
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'configuracion_linea_avance.json';
+    
+    // 5. Simular el clic para iniciar la descarga
+    document.body.appendChild(a);
+    a.click();
+    
+    // 6. Limpiar (remover el enlace y revocar la URL)
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotice('Configuración exportada exitosamente.');
+}
+
+async function importData(jsonFile) {
+    if (!jsonFile) return;
+
+    try {
+        const text = await jsonFile.text();
+        const importedData = JSON.parse(text);
+
+        // Opcional: Validar que la estructura de los datos sea correcta
+        if (!Array.isArray(importedData) || importedData.length === 0 || !importedData[0].id) {
+            alert('Error: El archivo JSON no parece ser un formato de configuración válido.');
+            return;
+        }
+
+        // 1. Reemplazar datos
+        data = importedData;
+        
+        // 2. Guardar en localStorage para persistencia
+        saveData(data);
+        
+        // 3. Re-renderizar ambas vistas
+        renderHitosConfig();
+        renderHitos();
+        
+        showNotice('Configuración importada y aplicada con éxito.', 4000);
+
+    } catch (e) {
+        console.error('Error al importar el archivo:', e);
+        alert('Error al procesar el archivo. Asegúrate de que sea un JSON válido.');
+    }
+}
+
 
 /* ============================================
     Acciones globales de la vista configuracion
@@ -662,6 +715,25 @@ document.getElementById('btnResetSeed')?.addEventListener('click',()=>{
   renderHitos();
   showNotice('Datos restaurados');
 });
+
+
+// ============================================
+// LISTENERS DE IMPORTACIÓN/EXPORTACIÓN <-- NUEVOS LISTENERS
+// ============================================
+
+// Listener para Exportar
+document.getElementById('btnExportData')?.addEventListener('click', exportData);
+
+// Listener para Importar (maneja el selector de archivo oculto)
+document.getElementById('fileInput')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        if(confirm(`¿Estás seguro de que quieres importar "${file.name}"? Esto reemplazará la configuración actual.`)) {
+             importData(file);
+        }
+    }
+});
+
 
 /* ============================================
     Util: escapar HTML (pequeña protección al inyectar valores)
