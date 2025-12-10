@@ -48,10 +48,13 @@ async function loadData(){
   }
 }
 
-// La función saveData ahora genera el archivo de descarga
-function saveData(dataToSave){
-  // Llama a la función de descarga que el usuario debe subir manualmente
-  saveConfigToFile(dataToSave); 
+// La función markChangesAsDirty ahora genera el archivo de descarga
+function markChangesAsDirty(dataToSave){
+    // La función ya no hace nada con los datos, solo avisa
+    // Los datos (data) ya fueron modificados en la función de edición
+    
+    // Mostramos un mensaje claro para el usuario
+    showNotice('Cambios realizados. ¡No olvides hacer clic en "Guardar Cambios" para generar el nuevo JSON!', 4000);
 }
 
 /* ============================================
@@ -352,7 +355,7 @@ configWrap.addEventListener('click', (event) => {
     } else if (target.classList.contains('delete-hito')) {
         if(!confirm(`¿Eliminar hito "${h.title}"?`)) return;
         data = data.filter(x=>x.id!==h.id);
-        saveData(data); // LLAMADA A SAVEDATA
+        markChangesAsDirty(data); // LLAMADA A SAVEDATA
         renderHitosConfig();
         renderHitos();
         showNotice('Hito eliminado. Descarga el nuevo JSON para guardar.');
@@ -370,7 +373,7 @@ configWrap.addEventListener('click', (event) => {
             if(!confirm(`¿Eliminar sub-hito "${s.title}"?`)) return;
             h.subhitos = h.subhitos.filter(x=>x.id!==s.id);
             recalcHitoAvance(h);
-            saveData(data); // LLAMADA A SAVEDATA
+            markChangesAsDirty(data); // LLAMADA A SAVEDATA
             renderHitosConfig();
             renderHitos();
             showNotice('Sub-hito eliminado. Descarga el nuevo JSON para guardar.');
@@ -383,7 +386,7 @@ configWrap.addEventListener('click', (event) => {
             const di = parseInt(target.dataset.doc, 10);
             if(!confirm('¿Eliminar documento?')) return;
             s.docs.splice(di,1);
-            saveData(data); // LLAMADA A SAVEDATA
+            markChangesAsDirty(data); // LLAMADA A SAVEDATA
             renderHitosConfig();
             renderHitos();
             showNotice('Documento eliminado. Descarga el nuevo JSON para guardar.');
@@ -438,7 +441,7 @@ function startEditHito(card, h){
     const av = clampAvance(tpl.querySelector('.edit-avance').value);
     h.avance = av;
 
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     tpl.remove();
     card.classList.remove('editing');
     renderHitosConfig();
@@ -483,7 +486,7 @@ function openNewSubForm(card, h){
     const newSub = { id: uid('s'), title, avance: av, docs: [] };
     h.subhitos.push(newSub);
     recalcHitoAvance(h);
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
     showNotice('Sub-hito creado. Descarga el nuevo JSON para guardar.');
@@ -523,7 +526,7 @@ function startEditSub(subItemEl, h, s, card){
     s.avance = av;
     
     recalcHitoAvance(h);
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
     showNotice('Sub-hito actualizado. Descarga el nuevo JSON para guardar.');
@@ -562,7 +565,7 @@ function openNewDocForm(subItemEl, h, s, card){
     if(!name) return alert('Nombre requerido');
     if(!s.docs) s.docs = [];
     s.docs.push(`${name} [${status}]`);
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
     showNotice('Documento agregado. Descarga el nuevo JSON para guardar.');
@@ -605,7 +608,7 @@ function startEditDoc(subItemEl, h, s, di, card){
     const newStatus = docNode.querySelector('.edit-doc-status').value;
     if(!newName) return alert('Nombre requerido');
     s.docs[di] = `${newName} [${newStatus}]`;
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
     showNotice('Documento actualizado. Descarga el nuevo JSON para guardar.');
@@ -641,7 +644,7 @@ function attachDragHandlers(card){
     const [moved] = data.splice(srcIndex,1);
     data.splice(targetIndex,0,moved);
     
-    saveData(data); // LLAMADA A SAVEDATA
+    markChangesAsDirty(data); // LLAMADA A SAVEDATA
     renderHitosConfig();
     renderHitos();
     showNotice('Orden actualizado. Descarga el nuevo JSON para guardar.');
@@ -653,7 +656,7 @@ function attachDragHandlers(card){
     UTILIDADES DE DESCARGA DE ARCHIVO
 ============================================ */
 // Esta función ahora se usa para guardar la configuración, forzando la descarga.
-function saveConfigToFile(dataToSave) {
+function downloadConfig(dataToSave) {
     const dataString = JSON.stringify(dataToSave, null, 2);
     const blob = new Blob([dataString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -669,7 +672,7 @@ function saveConfigToFile(dataToSave) {
         URL.revokeObjectURL(url);
     }, 100); 
     
-    // NO mostramos el mensaje aquí, se hace desde la función que la llama.
+    showNotice('Archivo JSON generado y descargado. Súbelo a GitHub para aplicar los cambios.');
 }
 
 
@@ -684,7 +687,7 @@ document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
   
   const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] };
   data.push(newH);
-  saveData(data); // LLAMADA A SAVEDATA
+  markChangesAsDirty(data); // LLAMADA A SAVEDATA
   document.getElementById('addHitoTitleInput').value = '';
   renderHitosConfig();
   renderHitos();
@@ -693,7 +696,7 @@ document.getElementById('btnAddHitoVisual')?.addEventListener('click', ()=>{
 
 // El botón de Guardar ahora hace lo mismo que saveData: fuerza la descarga
 document.getElementById('btnSaveAll')?.addEventListener('click', ()=>{
-  saveData(data);
+  markChangesAsDirty(data);
   renderHitos();
   showNotice('Archivo JSON de configuración generado. Súbelo a GitHub para aplicar los cambios en línea.');
 });
@@ -703,7 +706,7 @@ document.getElementById('btnResetSeed')?.addEventListener('click',()=>{
   if(!confirm('¿Restaurar datos iniciales? Esto eliminará todos los cambios.')) return;
   
   data = JSON.parse(JSON.stringify(seed)); // Deep copy del seed
-  saveData(data); // LLAMADA A SAVEDATA (descarga el archivo con el seed)
+  markChangesAsDirty(data); // LLAMADA A SAVEDATA (descarga el archivo con el seed)
   
   renderHitosConfig();
   renderHitos();
