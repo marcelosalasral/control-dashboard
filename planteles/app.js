@@ -1,25 +1,27 @@
-/* planteles/app.js
-   Carga preferente desde planteles/planteles_data.json -> localStorage -> seed
-   + exportar JSON (planteles_export.json)
-*/
+/* APP.JS — versión robusta: asegura switchView definido temprano y tolera errores */
 
-/* Evitar ReferenceError para onclick inline: definir switchView temprano */
-window.switchView = window.switchView || function(v){
+/* Definir una versión segura de switchView inmediatamente para evitar ReferenceError
+   si el resto del script falla o tarda en cargar. */
+window._currentView = window._currentView || 'visual';
+window.switchView = function(v){
   try {
     const visualEl = document.getElementById('visualView');
     const configEl = document.getElementById('configView');
     if(visualEl) visualEl.style.display = (v === 'visual') ? 'block' : 'none';
     if(configEl) configEl.style.display = (v === 'config') ? 'block' : 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
-    // Intentar llamar a funciones si ya existen
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.view === v);
+    });
+    window._currentView = v;
+    // Intentar invocar funciones si ya están definidas
     if(v === 'config' && typeof populateConfigSelects === 'function') {
-      try { populateConfigSelects(); } catch(e){ console.error(e); }
+      try { populateConfigSelects(); } catch(e){ console.error('populateConfigSelects error', e); }
     }
     if(v === 'visual' && typeof createConnectors === 'function') {
-      try { createConnectors(); } catch(e){ console.error(e); }
+      try { createConnectors(); } catch(e){ console.error('createConnectors error', e); }
     }
-  } catch(e){
-    console.error('switchView early error', e);
+  } catch (err) {
+    console.error('switchView error', err);
   }
 };
 
@@ -28,95 +30,79 @@ window.switchView = window.switchView || function(v){
 ============================================ */
 const STORAGE_KEY = 'planteles_v3';
 
-/* seed por defecto (mínimo ejemplo) */
 const seed = [
   {
     id:'h1',
-    title:'Hito 1 - Permiso de Edificación',
-    desc:'Trámite y documentación para obtener permiso de edificación.',
+    title:'Hito 1 — Documentación Base',
+    desc:'Actas, diagnósticos y recopilación inicial.',
     priority:'Alta',
+    avance:42,
+    subhitos:[
+      { id:'h1s1', title:'Revisión de antecedentes', avance:60, docs:['Acta de comité técnico [approved]','Informe diagnóstico [approved]','Plano actualizado [pending]'] },
+      { id:'h1s2', title:'Solicitud de documentos externos', avance:25, docs:['Certificado DOM [pending]','Certificado SAG [approved]'] }
+    ]
+  },
+  {
+    id:'h2',
+    title:'Hito 2 — Permisos Municipales',
+    desc:'Requisitos y presentación al municipio.',
+    priority:'Media',
+    avance:10,
+    subhitos:[
+      { id:'h2s1', title:'Revisión de normas', avance:10, docs:['Certificación sanitaria [pending]','Plan regulador [pending]'] },
+      { id:'h2s2', title:'Presentación preliminar', avance:0, docs:['Carta de inicio [pending]','Presentación técnica [pending]'] }
+    ]
+  },
+  {
+    id:'h3',
+    title:'Hito 3 — Regularización Ambiental',
+    desc:'Estudios, mitigaciones y certificados.',
+    priority:'Baja',
     avance:0,
     subhitos:[
-      { id:'h1s1', title:'Documentos Legales', avance:0, docs:[] },
-      { id:'h1s2', title:'Documentos y Planos', avance:0, docs:[] },
-      { id:'h1s3', title:'Documentos y Certificados Estatales', avance:0, docs:[] }
+      { id:'h3s1', title:'Estudios de impacto', avance:0, docs:['Estudio preliminar [pending]'] }
     ]
   }
 ];
 
-/* Flag para saber si los datos vinieron del archivo en disco */
-let dataFromFile = false;
-
-/* loadData: intenta fetch('./planteles_data.json') y si falla usa localStorage o seed */
-async function loadData(){
-  // Intento de cargar archivo externo (planteles/planteles_data.json)
-  const fileUrl = './planteles_data.json?t=' + Date.now(); // cache-bust
-  try {
-    const resp = await fetch(fileUrl, { cache: 'no-store' });
-    if(resp.ok){
-      const parsed = await resp.json();
-      // validación mínima: debe ser array
-      if(Array.isArray(parsed)){
-        dataFromFile = true;
-        console.info('Cargando datos desde planteles_data.json');
-        return parsed;
-      } else {
-        console.warn('planteles_data.json cargado pero no es un array. Se usará fallback.');
-      }
-    } else {
-      // 404 u otro: seguir con fallback
-      console.debug('planteles_data.json no encontrado (status ' + resp.status + '), usando fallback.');
-    }
-  } catch (err) {
-    console.debug('Error intentando leer planteles_data.json, usando fallback.', err);
-  }
-
-  // Fallback localStorage
+function loadData(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed)) return parsed;
-      // si no es array, eliminar para evitar bucle
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  } catch (err) {
-    console.warn('localStorage inválido -> se limpiará', err);
+    if(raw) return JSON.parse(raw);
+  } catch(e){
+    console.warn('loadData: localStorage parse failed, will use seed', e);
     localStorage.removeItem(STORAGE_KEY);
   }
-
-  // Si nada, inicializar con seed
   localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
   return JSON.parse(JSON.stringify(seed));
 }
 
-/* Guardar en localStorage (cuando el usuario decide exportar/importar local) */
-function saveDataLocal(d){
+function saveData(data){
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e){
-    console.error('Error guardando en localStorage', e);
+    console.error('saveData error', e);
   }
 }
 
 /* ============================================
-   Estado en memoria y utilidades
+   Estado y utilidades
 ============================================ */
-let data = []; // se inicializa en init
+let data = loadData();
 let currentOpen = null;
 
 function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 
 /* ============================================
-   Referencias DOM (se inicializan en DOMContentLoaded)
+   Referencias DOM (se obtienen después del DOMContentLoaded)
 ============================================ */
 let wrap, connectorLine, detalleArea, detalleInner, detalleTitulo, configNotice;
 
 /* ============================================
-   Render (visual)
+   Render básico (visual)
 ============================================ */
 function renderHitos(){
-  if(!wrap) return;
+  if(!wrap) return console.warn('renderHitos: wrap no inicializado');
   wrap.querySelectorAll('.hito-card').forEach(n=>n.remove());
   const frag = document.createDocumentFragment();
   data.forEach(h => {
@@ -135,7 +121,7 @@ function renderHitos(){
     frag.appendChild(card);
   });
   wrap.appendChild(frag);
-  // recalcular conectores en el siguiente frame
+  // conectores en next frame
   window.requestAnimationFrame(()=> { if(typeof createConnectors === 'function') createConnectors(); });
 }
 
@@ -172,7 +158,9 @@ function openHito(id, el){
   if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth',inline:'center'});
 }
 
-/* createConnectors (simple) */
+/* ============================================
+   Conectores (optimizado)
+============================================ */
 function createConnectors(){
   if(!wrap || !connectorLine) return;
   document.querySelectorAll('.connector-dot').forEach(d=>d.remove());
@@ -200,49 +188,55 @@ function createConnectors(){
 }
 
 /* ============================================
-   CONFIG: populate selects (si existen)
+   CONFIG: populación de selects (si existen)
 ============================================ */
 function populateConfigSelects(){
-  const selectH = document.getElementById('selectHitoEdit');
-  const selectSub = document.getElementById('selectSubEdit');
-  const selectDoc = document.getElementById('selectDocEdit');
-  if(!selectH || !selectSub || !selectDoc){
-    // selects pueden no existir según html; no es error
-    return;
+  try {
+    const selectH = document.getElementById('selectHitoEdit');
+    const selectSub = document.getElementById('selectSubEdit');
+    const selectDoc = document.getElementById('selectDocEdit');
+    if(!selectH || !selectSub || !selectDoc) return;
+    selectH.innerHTML = '<option value="">-- seleccionar --</option>';
+    data.forEach(h=>{
+      const o = document.createElement('option');
+      o.value = h.id; o.textContent = h.title;
+      selectH.appendChild(o);
+    });
+    selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
+    selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
+  } catch(e){
+    console.error('populateConfigSelects error', e);
   }
-  selectH.innerHTML = '<option value="">-- seleccionar --</option>';
-  data.forEach(h=>{
-    const o=document.createElement('option');
-    o.value=h.id; o.textContent=h.title;
-    selectH.appendChild(o);
-  });
-  selectSub.innerHTML = '<option value="">-- seleccionar sub-hito --</option>';
-  selectDoc.innerHTML = '<option value="">-- seleccionar documento --</option>';
 }
 
 /* ============================================
-   Exportar JSON: descarga el JSON actual (cliente)
+   Export / Reset handlers (se expondrán en init)
 ============================================ */
-function exportToFile(filename = 'planteles_export.json'){
+function exportToFile(filename='planteles_export.json'){
   try{
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
     a.click();
-    a.remove();
     URL.revokeObjectURL(url);
-    showNotice && showNotice('Archivo exportado: ' + filename);
-  } catch(err){
-    console.error('export error', err);
-    alert('Error al exportar: ' + (err.message || err));
-  }
+    showNotice('Exportado: ' + filename);
+  } catch(e){ console.error('export error', e); }
+}
+
+function resetToSeed(){
+  if(!confirm('¿Restaurar datos iniciales?')) return;
+  data = JSON.parse(JSON.stringify(seed));
+  saveData(data);
+  renderHitos();
+  populateConfigSelects();
+  detalleArea && (detalleArea.style.display='none');
+  showNotice('Datos restaurados');
 }
 
 /* ============================================
-   Util: mostrar mensajes en UI si existe el contenedor
+   UI util
 ============================================ */
 function showNotice(msg, timeout=2500){
   if(!configNotice) { console.log('NOTICE:', msg); return; }
@@ -252,13 +246,11 @@ function showNotice(msg, timeout=2500){
 }
 
 /* ============================================
-   Inicialización asíncrona: carga de datos y enlazado de botones
+   Inicialización segura tras DOMContentLoaded
 ============================================ */
-async function initApp(){
+window.addEventListener('DOMContentLoaded', ()=> {
   try {
-    data = await loadData();
-
-    // Inicializar referencias DOM
+    // Obtener referencias DOM seguras
     wrap = document.getElementById('hitosWrap');
     connectorLine = document.getElementById('connectorLine');
     detalleArea = document.getElementById('detalleArea');
@@ -266,58 +258,58 @@ async function initApp(){
     detalleTitulo = document.getElementById('detalleTitulo');
     configNotice = document.getElementById('configNotice');
 
-    if(dataFromFile){
-      showNotice('Cargando datos desde planteles_data.json');
-    }
-
+    // Render inicial
     renderHitos();
-    // build config selects if present
+    createConnectors();
     populateConfigSelects();
 
     // Enlazar botones si existen
-    document.getElementById('btnExport')?.addEventListener('click', ()=> exportToFile());
-    document.getElementById('btnResetSeed')?.addEventListener('click', ()=> {
-      if(!confirm('¿Restaurar datos iniciales?')) return;
-      data = JSON.parse(JSON.stringify(seed));
-      saveDataLocal(data);
+    const btnSaveH = document.getElementById('btnSaveHito');
+    if(btnSaveH) btnSaveH.addEventListener('click', ()=>{
+      const hid = document.getElementById('selectHitoEdit')?.value;
+      if(!hid) return alert('Selecciona un hito');
+      const h = data.find(x=>x.id===hid); if(!h) return;
+      h.desc = document.getElementById('editHitoDesc')?.value.trim() || '';
+      const av = parseInt(document.getElementById('editHitoAvance')?.value||'0',10);
+      h.avance = isNaN(av)?0:av;
+      saveData(data);
       renderHitos();
+      alert('Hito guardado');
+    });
+
+    const btnAddH = document.getElementById('btnAddHito');
+    if(btnAddH) btnAddH.addEventListener('click', ()=>{
+      const title = document.getElementById('newHitoTitle')?.value.trim();
+      const priority = document.getElementById('newHitoPriority')?.value || 'Media';
+      if(!title) return alert('Ingresa título');
+      const newH = { id: uid('h'), title, desc:'', priority, avance:0, subhitos:[] };
+      data.push(newH);
+      saveData(data);
+      document.getElementById('newHitoTitle').value = '';
       populateConfigSelects();
-      detalleArea && (detalleArea.style.display='none');
-      showNotice('Datos restaurados');
+      renderHitos();
     });
 
-    // ejemplo: si quieres un botón que importe desde file input (no sobrescribe server)
-    const fileInput = document.getElementById('fileImportInput');
-    if(fileInput){
-      fileInput.addEventListener('change', (e)=>{
-        const f = e.target.files && e.target.files[0];
-        if(!f) return;
-        const reader = new FileReader();
-        reader.onload = (ev)=>{
-          try {
-            const parsed = JSON.parse(ev.target.result);
-            if(!Array.isArray(parsed)) throw new Error('Formato inválido');
-            if(!confirm('Importar JSON reemplazará los datos locales. ¿Continuar?')) return;
-            data = parsed;
-            saveDataLocal(data);
-            renderHitos();
-            populateConfigSelects();
-            showNotice('Importación completada');
-          } catch(err){
-            alert('Error importando JSON: ' + err.message);
-          }
-        };
-        reader.readAsText(f);
-      });
-    }
+    const btnExport = document.getElementById('btnExport');
+    if(btnExport) btnExport.addEventListener('click', ()=> exportToFile());
 
-    // asegurar tabs funcionan (fallback)
+    const btnReset = document.getElementById('btnResetSeed');
+    if(btnReset) btnReset.addEventListener('click', ()=> resetToSeed());
+
+    // Fallback: asegurar que tabs sin onclick funcionen
     document.querySelectorAll('.tab').forEach(t => {
-      t.addEventListener('click', ()=> window.switchView(t.dataset.view));
+      t.addEventListener('click', (e)=>{
+        const view = t.dataset.view;
+        try { window.switchView(view); } catch(err){ console.error('switchView fallback', err); }
+      });
     });
 
-    // listeners de layout
-    window.addEventListener('resize', ()=> { if(typeof createConnectors==='function') createConnectors(); });
+    // Resize/scroll optimizados
+    let resizeTimer = null;
+    window.addEventListener('resize', ()=>{
+      if(resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(()=> { createConnectors(); resizeTimer = null; }, 120);
+    });
     if(wrap){
       let ticking = false;
       wrap.addEventListener('scroll', ()=>{
@@ -329,13 +321,9 @@ async function initApp(){
     }
 
   } catch(err){
-    console.error('initApp error', err);
+    console.error('Init error', err);
   }
-}
-
-/* Ejecutar init cuando el DOM esté listo */
-window.addEventListener('DOMContentLoaded', ()=> initApp());
-
+});
 /* Exportar funciones útiles al scope global para debugging / consola */
 window.planteles_exportToFile = exportToFile;
 window.planteles_saveLocal = saveDataLocal;
