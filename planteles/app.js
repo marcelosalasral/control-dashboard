@@ -185,7 +185,17 @@ function openHito(id, el){
       const box = document.createElement('div');
       box.className = 'subhito';
 
-      const docs = (s.docs||[]).map(d=>`<li>${escapeHtml(d)}</li>`).join('');
+    // CÓDIGO NUEVO Y NECESARIO EN openHito
+        const docs = (s.docs||[]).map(d => {
+            // Expresión regular para separar Nombre y [Estado]
+            const match = d.match(/^(.*)\s\[(.*)\]$/i); // Uso de /i para ser insensible a mayúsculas/minúsculas
+            const docName = match ? match[1] : d;
+            // Normalizamos el estado a minúsculas para usarlo como clase CSS
+            const status = match ? match[2].toLowerCase() : 'pendiente'; 
+            
+            // Asignamos la clase "status-..." al <li>
+            return `<li class="doc-status-${status}">${escapeHtml(docName)} <span>[${status.toUpperCase()}]</span></li>`;
+        }).join('');
 
       box.innerHTML = `
         <strong>${escapeHtml(s.title)}</strong>
